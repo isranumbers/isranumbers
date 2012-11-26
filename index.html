@@ -1,0 +1,54 @@
+<html>
+<head>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+<body>
+<div><h1>
+IsraNumbers - the site for data about israel
+</h1></div>
+
+<table border="2">
+<tr>
+<th>author</th>
+<th>number</th>
+<th>units</th>
+<th>description</th>
+</tr>
+
+{% for number in numbers %}
+    <tr> 
+    {% if number.author %}
+       <td>{{ number.author }}</td>
+    {% else %}
+       <td>anonymous</td>
+    {% endif %}
+    <td>{{ "%f" % number.number }}</td>
+    <td>{{ number.units }} </td> 
+    <td>{{ number.description|escape }}</td>
+    </tr> 
+{% endfor %}
+
+</table> 
+   
+<form action="/sign" method="post">
+    <br>
+    <table>
+    <tr>
+    <td id="InsertData">number:</td><td> <textarea name="number" rows="1" cols="8"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">units:</td><td> <textarea name="units" rows="1" cols="14"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">description:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
+    </tr>
+    </table>     
+    <div><input type="submit" value="insert number"></div>
+</form>
+
+<a href="{{ url }}">{{ url_linktext }}</a>
+
+</body>
+</html>
+
+

@@ -1,0 +1,12 @@
+body {
+  font-family: Verdana, Helvetica, sans-serif;
+  background-color: #DDDDDD;
+}
+h1 {
+  color:green;
+  text-align:center;
+}
+#InsertData {
+  padding-top:3px;
+  vertical-align:top;
+}
