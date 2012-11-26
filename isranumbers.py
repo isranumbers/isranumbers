@@ -16,10 +16,16 @@ class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
   units, and description."""
   author = db.StringProperty()
+  insertion_time= db.DateTimeProperty(auto_now_add=True)
   number = db.FloatProperty()
   units = db.StringProperty()
+  labels = db.StringProperty(multiline = True)
   description = db.StringProperty(multiline = True)
-
+  source = db.StringProperty()
+  year_of_number = db.IntegerProperty()
+  month_of_number =db.IntegerProperty()
+  day_of_number =db.IntegerProperty()
+  
 
 def isra_key():
   return db.Key.from_path('IsraBook','IsraTable')
@@ -62,6 +68,11 @@ class InsertNumber(webapp2.RequestHandler):
     number.number = float(self.request.get('number'))
     number.units = self.request.get('units')
     number.description = self.request.get('description')
+    number.labels = self.request.get('labels')
+    number.source = self.request.get('source')
+    number.year_of_number = int(self.request.get('year_of_number'))
+    number.month_of_number = int(self.request.get('month_of_number'))
+    number.day_of_number = int(self.request.get('day_of_number'))
     number.put()
     self.redirect('/')
 
