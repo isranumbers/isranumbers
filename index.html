@@ -1,18 +1,21 @@
-<html>
-<head>
+<html lang="he">
+{# rtl not in the html or body tag because internet explorer have a problem with that#}
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
 </head>
 <body>
+<div dir="rtl">
 <div><h1>
-IsraNumbers - the site for data about israel
+נתונים בישראל
 </h1></div>
 
 <table border="2">
 <tr>
-<th>author</th>
-<th>number</th>
-<th>units</th>
-<th>description</th>
+<th>המזין</th>
+<th>המספר</th>
+<th>יחידות</th>
+<th>תיאור</th>
 </tr>
 
 {% for number in numbers %}
@@ -34,34 +37,35 @@ IsraNumbers - the site for data about israel
     <br>
     <table>
     <tr>
-    <td id="InsertData">number:</td><td> <textarea name="number" rows="1" cols="8"></textarea></td>
+    <td id="InsertData">המספר:</td><td> <textarea name="number" rows="1" cols="8"></textarea></td>
     </tr>
     <tr>
-    <td id="InsertData">units:</td><td> <textarea name="units" rows="1" cols="14"></textarea></td>
+    <td id="InsertData">יחידות:</td><td> <textarea name="units" rows="1" cols="14"></textarea></td>
     </tr>
     <tr>
-    <td id="InsertData">description:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
+    <td id="InsertData">תיאור:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
     </tr>
-    <td id="InsertData">labels:</td><td> <textarea name="labels" rows="4" cols="20"></textarea></td>
-    </tr>
-    <tr>
-    <td id="InsertData">source:</td><td> <textarea name="source" rows="1" cols="14"></textarea></td>
+    <td id="InsertData">תגיות:</td><td> <textarea name="labels" rows="4" cols="20"></textarea></td>
     </tr>
     <tr>
-    <td id="InsertData">year of number:</td><td> <textarea name="year_of_number" rows="1" cols="14"></textarea></td>
+    <td id="InsertData">המקור:</td><td> <textarea name="source" rows="1" cols="14"></textarea></td>
     </tr>
     <tr>
-    <td id="InsertData">month of number:</td><td> <textarea name="month_of_number" rows="1" cols="14"></textarea></td>
+    <td id="InsertData">שנת הנתון:</td><td> <textarea name="year_of_number" rows="1" cols="14"></textarea></td>
     </tr>
     <tr>
-    <td id="InsertData">day of number:</td><td> <textarea name="day_of_number" rows="1" cols="14"></textarea></td>
+    <td id="InsertData">חודש הנתון:</td><td> <textarea name="month_of_number" rows="1" cols="14"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">יום הנתון:</td><td> <textarea name="day_of_number" rows="1" cols="14"></textarea></td>
     </tr>
     </table>     
-    <div><input type="submit" value="insert number"></div>
+    <div><input type="submit" value="הזן מספר"></div>
 </form>
 
 <a href="{{ url }}">{{ url_linktext }}</a>
 
+</div>
 </body>
 </html>
 
