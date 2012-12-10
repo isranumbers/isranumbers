@@ -26,6 +26,11 @@
 נתונים בישראל
 </h1></div>
 
+<form>חפש:
+  <input value="{{ search_phrase }}" name="search_phrase">
+  <input type="submit" value="בצע חיפוש">
+</form>
+
 <table border="2">
 <tr>
 <th>המזין</th>
@@ -39,7 +44,7 @@
     {% if number.author %}
        <td>{{ number.author }}</td>
     {% else %}
-       <td>anonymous</td>
+       <td>אנונימי</td>
     {% endif %}
     <td>{{ "%f" % number.number }}</td>
     <td>{{ number.units }} </td> 

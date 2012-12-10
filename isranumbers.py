@@ -4,12 +4,20 @@ import urllib
 import webapp2
 import jinja2
 import os
+import string
 
+from google.appengine.api import search
 from google.appengine.ext import db
 from google.appengine.api import users
+from google.appengine.ext import webapp
+from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp.util import run_wsgi_app
+
 
 jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
+
+_INDEX_NAME = 'allnumbers'
 
 
 class IsraNumber(db.Model):
@@ -40,6 +48,11 @@ class MainPage(webapp2.RequestHandler):
     # in a query.
     numbers = IsraNumber.gql("WHERE ANCESTOR IS :1 LIMIT 10", isra_key())
     
+    if self.request.get('search_phrase'):
+      search_phrase=self.request.get('search_phrase')
+    else:
+      search_phrase=""
+    
     if users.get_current_user():
         url = users.create_logout_url(self.request.uri)
         url_linktext = 'Logout'
@@ -51,19 +64,19 @@ class MainPage(webapp2.RequestHandler):
         'numbers': numbers,
         'url': url,
         'url_linktext': url_linktext,
+        'search_phrase': search_phrase,
     }
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
-    
-
+        
 
 class InsertNumber(webapp2.RequestHandler):
   def post(self):
     number = IsraNumber(parent=isra_key())
 
     if users.get_current_user():
-      number.author = users.get_current_user().nickname()
+      number.author = users.get_current_user().nickname().split('@')[0]
 
     number.number = float(self.request.get('number'))
     number.units = self.request.get('units')
@@ -74,7 +87,21 @@ class InsertNumber(webapp2.RequestHandler):
     number.month_of_number = int(self.request.get('month_of_number'))
     number.day_of_number = int(self.request.get('day_of_number'))
     number.put()
+
+    search.Index(name=_INDEX_NAME).add(search.Document(
+      fields=[search.TextField(name='author', value=number.author),
+              search.NumberField(name='number', value=number.number),
+              search.TextField(name='units', value=number.units),
+              search.TextField(name='description', value=number.description),
+              search.TextField(name='labels', value=number.labels),
+              search.TextField(name='source', value=number.source),
+              search.NumberField(name='year_of_number', value=number.year_of_number),
+              search.NumberField(name='month_of_number', value=number.month_of_number),
+              search.NumberField(name='day_of_number', value=number.day_of_number)]))
+              
+              
     self.redirect('/')
+
 
 
 app = webapp2.WSGIApplication([('/', MainPage),
