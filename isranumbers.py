@@ -47,11 +47,20 @@ class MainPage(webapp2.RequestHandler):
     # slight chance that greeting that had just been written would not show up
     # in a query.
     numbers = IsraNumber.gql("WHERE ANCESTOR IS :1 LIMIT 10", isra_key())
-    
+    #ophir:why in the google example code the query is handled differently
+    #(it seems like they take the variable from the url instead of using it directly)
     if self.request.get('search_phrase'):
       search_phrase=self.request.get('search_phrase')
     else:
       search_phrase=""
+    #need to check if the scoredDocunemt istances are set to hebrew automatically
+    #and also if the different fields can be in different language
+    expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
+    sort_opts = search.SortOptions(expressions=expr_list)
+    search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
+                                                  returned_fields=['author', 'number', 'units', 'description'])
+    search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+    results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
     
     if users.get_current_user():
         url = users.create_logout_url(self.request.uri)
@@ -65,6 +74,7 @@ class MainPage(webapp2.RequestHandler):
         'url': url,
         'url_linktext': url_linktext,
         'search_phrase': search_phrase,
+        'results': results,
     }
 
     template = jinja_environment.get_template('index.html')

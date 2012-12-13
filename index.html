@@ -31,6 +31,7 @@
   <input type="submit" value="בצע חיפוש">
 </form>
 
+{#
 <table border="2">
 <tr>
 <th>המזין</th>
@@ -51,11 +52,28 @@
     <td>{{ number.description|escape }}</td>
     </tr> 
 {% endfor %}
-
-
-
 </table> 
+#}
+
+<table border="2">
+<tr>
+<th>המזין</th>
+<th>המספר</th>
+<th>יחידות</th>
+<th>תיאור</th>
+</tr>
    
+{% for scored_document in results %}
+    <tr>
+    {% for field in scored_document.fields %}
+        <td>
+        {{field.value}} &nbsp;
+        </td>
+    {% endfor %}
+    </tr>
+{% endfor %}
+</table>
+
 <form action="/sign" method="post">
     <br>
     <table>
