@@ -122,6 +122,11 @@
     <div><input type="submit" value="הזן מספר"></div>
 </form>
 
+<form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="csv_file">
+    <input type="submit" value="העלה קובץ">
+</form>
+
 <a href="{{ url }}">{{ url_linktext }}</a>
 
 </div>

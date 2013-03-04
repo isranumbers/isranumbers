@@ -5,7 +5,10 @@ import webapp2
 import jinja2
 import os
 import string
+import csv
 
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.api import search
 from google.appengine.ext import db
 from google.appengine.api import users
@@ -75,11 +78,49 @@ class MainPage(webapp2.RequestHandler):
         'url_linktext': url_linktext,
         'search_phrase': search_phrase,
         'results': results,
+        'upload_url': blobstore.create_upload_url('/upload')
     }
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
         
+class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
+  def post(self):
+    file_info = self.get_uploads('csv_file')[0]
+    reader = blobstore.BlobReader(file_info)
+    next(reader)
+    csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
+    author = "anonymous"
+    if users.get_current_user():
+      author = users.get_current_user().nickname().split('@')[0]
+    
+    for row in csv_file_content:
+      #self.response.out.write(', '.join(row))
+      number = IsraNumber(parent=isra_key())
+      number.author = author
+      number.number = float(row[0])
+      number.units = row[1]
+      number.description = row[2]
+      number.labels = row[3]
+      number.source = row[4]
+      number.year_of_number = int(row[5])
+      number.month_of_number = int(row[6])
+      number.day_of_number = int(row[7])
+      number.put()
+      
+      search.Index(name=_INDEX_NAME).add(search.Document(
+      fields=[search.TextField(name='author', value=number.author),
+              search.NumberField(name='number', value=number.number),
+              search.TextField(name='units', value=number.units),
+              search.TextField(name='description', value=number.description),
+              search.TextField(name='labels', value=number.labels),
+              search.TextField(name='source', value=number.source),
+              search.NumberField(name='year_of_number', value=number.year_of_number),
+              search.NumberField(name='month_of_number', value=number.month_of_number),
+              search.NumberField(name='day_of_number', value=number.day_of_number)]))
+              
+              
+    self.redirect('/')
 
 class InsertNumber(webapp2.RequestHandler):
   def post(self):
@@ -115,6 +156,7 @@ class InsertNumber(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([('/', MainPage),
-                               ('/sign', InsertNumber)],
+                               ('/sign', InsertNumber),
+                               ('/upload', UploadCsv)],
                               debug=True)
 
