@@ -90,69 +90,53 @@ class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
     reader = blobstore.BlobReader(file_info)
     next(reader)
     csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
-    author = "anonymous"
-    if users.get_current_user():
-      author = users.get_current_user().nickname().split('@')[0]
     
-    for row in csv_file_content:
-      #self.response.out.write(', '.join(row))
-      number = IsraNumber(parent=isra_key())
-      number.author = author
-      number.number = float(row[0])
-      number.units = row[1]
-      number.description = row[2]
-      number.labels = row[3]
-      number.source = row[4]
-      number.year_of_number = int(row[5])
-      number.month_of_number = int(row[6])
-      number.day_of_number = int(row[7])
-      number.put()
-      
-      search.Index(name=_INDEX_NAME).add(search.Document(
-      fields=[search.TextField(name='author', value=number.author),
-              search.NumberField(name='number', value=number.number),
-              search.TextField(name='units', value=number.units),
-              search.TextField(name='description', value=number.description),
-              search.TextField(name='labels', value=number.labels),
-              search.TextField(name='source', value=number.source),
-              search.NumberField(name='year_of_number', value=number.year_of_number),
-              search.NumberField(name='month_of_number', value=number.month_of_number),
-              search.NumberField(name='day_of_number', value=number.day_of_number)]))
-              
-              
+    for row in csv_file_content:      
+      add_to_search_index(get_author(),          
+                          float(row[0]),
+                          row[1],
+                          row[2],
+                          row[3],
+                          row[4],
+                          int(row[5]),
+                          int(row[6]),
+                          int(row[7]))
     self.redirect('/')
 
 class InsertNumber(webapp2.RequestHandler):
   def post(self):
-    number = IsraNumber(parent=isra_key())
-
-    if users.get_current_user():
-      number.author = users.get_current_user().nickname().split('@')[0]
-
-    number.number = float(self.request.get('number'))
-    number.units = self.request.get('units')
-    number.description = self.request.get('description')
-    number.labels = self.request.get('labels')
-    number.source = self.request.get('source')
-    number.year_of_number = int(self.request.get('year_of_number'))
-    number.month_of_number = int(self.request.get('month_of_number'))
-    number.day_of_number = int(self.request.get('day_of_number'))
-    number.put()
-
-    search.Index(name=_INDEX_NAME).add(search.Document(
-      fields=[search.TextField(name='author', value=number.author),
-              search.NumberField(name='number', value=number.number),
-              search.TextField(name='units', value=number.units),
-              search.TextField(name='description', value=number.description),
-              search.TextField(name='labels', value=number.labels),
-              search.TextField(name='source', value=number.source),
-              search.NumberField(name='year_of_number', value=number.year_of_number),
-              search.NumberField(name='month_of_number', value=number.month_of_number),
-              search.NumberField(name='day_of_number', value=number.day_of_number)]))
-              
+    add_to_search_index(get_author(),
+                        float(self.request.get('number')),
+                        self.request.get('units'),
+                        self.request.get('description'),
+                        self.request.get('labels'),
+                        self.request.get('source'),
+                        int(self.request.get('year_of_number')),
+                        int(self.request.get('month_of_number')),
+                        int(self.request.get('day_of_number')))     
               
     self.redirect('/')
+    
 
+def get_author():
+  author = "None"
+  if users.get_current_user():
+    author = users.get_current_user().nickname().split('@')[0]
+  return author  
+
+
+def add_to_search_index(author,number,units,description,labels,source,year,month,day):
+  search.Index(name=_INDEX_NAME).add(search.Document(
+      fields=[search.TextField(name='author', value=author),
+              search.NumberField(name='number', value=number),
+              search.TextField(name='units', value=units),
+              search.TextField(name='description', value=description),
+              search.TextField(name='labels', value=labels),
+              search.TextField(name='source', value=source),
+              search.NumberField(name='year_of_number', value=year),
+              search.NumberField(name='month_of_number', value=month),
+              search.NumberField(name='day_of_number', value=day)]))
+    
 
 
 app = webapp2.WSGIApplication([('/', MainPage),
