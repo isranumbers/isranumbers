@@ -1,17 +1,22 @@
 import xml.etree.ElementTree as ET
 import csv
+import shutil
+
+#copying the original file to deal with exceptions in uploading the data
+source_name = 'timeseries_e_manipulated'
+target_name = source_name + '_leftovers.xml'
+shutil.copyfile(source_name + '.xml', target_name)
 
 #creating the csv and the csv header
-with open('parameters.csv', 'wb') as csvfile:
+with open('parameters.csv', 'wb') as csvfile:    
     spamwriter = csv.writer(csvfile, delimiter=',',
                             quotechar='"', quoting=csv.QUOTE_ALL)
     spamwriter.writerow(['number', 'units', 'description', 'tags', 'source', 'year', 'month', 'day'])
 
 #adding data from xml
 
-    tree = ET.parse('timeseries_e1.xml')
+    tree = ET.parse(target_name)
     root = tree.getroot()
-
     for child in root[0]:
       source = 'lamas'
       year = '-1'
