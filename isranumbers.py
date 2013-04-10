@@ -6,6 +6,7 @@ import jinja2
 import os
 import string
 import csv
+import logging
 
 from google.appengine.ext import blobstore
 from google.appengine.ext.webapp import blobstore_handlers
@@ -15,7 +16,7 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
-
+from google.appengine.api import taskqueue
 
 jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
@@ -64,6 +65,7 @@ class MainPage(webapp2.RequestHandler):
                                                   returned_fields=['author', 'number', 'units', 'description'])
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+
     
     if users.get_current_user():
         url = users.create_logout_url(self.request.uri)
@@ -87,6 +89,14 @@ class MainPage(webapp2.RequestHandler):
 class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
   def post(self):
     file_info = self.get_uploads('csv_file')[0]
+    key_str = str(file_info.key())
+    taskqueue.add(url='/worker',params = {'key_str' : key_str})
+    self.redirect('/')
+
+class CsvWorker(webapp2.RequestHandler):
+  def post(self):
+    logging.info("worker called")
+    file_info = blobstore.BlobInfo(blobstore.BlobKey(self.request.get('key_str')))
     reader = blobstore.BlobReader(file_info)
     next(reader)
     csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
@@ -101,7 +111,8 @@ class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
                           int(row[5]),
                           int(row[6]),
                           int(row[7]))
-    self.redirect('/')
+    logging.info("worker finished")
+
 
 class InsertNumber(webapp2.RequestHandler):
   def post(self):
@@ -126,8 +137,8 @@ def get_author():
 
 
 def add_to_search_index(author,number,units,description,labels,source,year,month,day):
-  search.Index(name=_INDEX_NAME).add(search.Document(
-      fields=[search.TextField(name='author', value=author),
+  search.Index(name=_INDEX_NAME).put(search.Document(
+    fields=[search.TextField(name='author', value=author),
               search.NumberField(name='number', value=number),
               search.TextField(name='units', value=units),
               search.TextField(name='description', value=description),
@@ -141,6 +152,7 @@ def add_to_search_index(author,number,units,description,labels,source,year,month
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/sign', InsertNumber),
-                               ('/upload', UploadCsv)],
+                               ('/upload', UploadCsv),
+                               ('/worker', CsvWorker)],
                               debug=True)
 
