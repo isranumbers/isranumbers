@@ -128,6 +128,16 @@ class InsertNumber(webapp2.RequestHandler):
               
     self.redirect('/')
     
+class DeleteNumber(webapp2.RequestHandler):
+  def post(self):
+    documents_to_delete = int(self.request.get('documents_to_delete'))
+    doc_index = search.Index(name=_INDEX_NAME)
+    for i in range(1,documents_to_delete):    
+      document_ids = [document.doc_id
+                      for document in doc_index.get_range(limit=200 , ids_only=True)]
+      if document_ids:    
+        doc_index.delete(document_ids)
+    self.redirect('/')
 
 def get_author():
   author = "None"
@@ -153,6 +163,7 @@ def add_to_search_index(author,number,units,description,labels,source,year,month
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/sign', InsertNumber),
                                ('/upload', UploadCsv),
-                               ('/worker', CsvWorker)],
+                               ('/worker', CsvWorker),
+                               ('/delete', DeleteNumber)],
                               debug=True)
 
