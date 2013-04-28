@@ -25,35 +25,15 @@
 <div><h1>
 נתונים בישראל
 </h1></div>
+<div><h2>
+האתר מכיל {{ number_found }} נתונים
+</h2></div>
 
 <form>חפש:
   <input value="{{ search_phrase }}" name="search_phrase">
   <input type="submit" value="בצע חיפוש">
 </form>
 
-{#
-<table border="2">
-<tr>
-<th>המזין</th>
-<th>המספר</th>
-<th>יחידות</th>
-<th>תיאור</th>
-</tr>
-
-{% for number in numbers %}
-    <tr> 
-    {% if number.author %}
-       <td>{{ number.author }}</td>
-    {% else %}
-       <td>אנונימי</td>
-    {% endif %}
-    <td>{{ "%f" % number.number }}</td>
-    <td>{{ number.units }} </td> 
-    <td>{{ number.description|escape }}</td>
-    </tr> 
-{% endfor %}
-</table> 
-#}
 
 <table border="2">
 <tr>

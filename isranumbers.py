@@ -45,14 +45,11 @@ def isra_key():
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
-    # Ancestor Queries, as shown here, are strongly consistent with the High
-    # Replication Datastore. Queries that span entity groups are eventually
-    # consistent. If we omitted the ancestor from this query there would be a
-    # slight chance that greeting that had just been written would not show up
-    # in a query.
-    numbers = IsraNumber.gql("WHERE ANCESTOR IS :1 LIMIT 10", isra_key())
-    #ophir:why in the google example code the query is handled differently
-    #(it seems like they take the variable from the url instead of using it directly)
+    #get the number of entries in the index
+    default_options = search.QueryOptions(limit=1)
+    empty_search_phrase_obj = search.Query(query_string="",options=default_options)
+    results_for_number_of_data_documents=search.Index(name=_INDEX_NAME).search(query=empty_search_phrase_obj)
+    number_found = results_for_number_of_data_documents.number_found
     if self.request.get('search_phrase'):
       search_phrase=self.request.get('search_phrase')
     else:
@@ -75,11 +72,11 @@ class MainPage(webapp2.RequestHandler):
         url_linktext = 'Login' 
     
     template_values = {
-        'numbers': numbers,
         'url': url,
         'url_linktext': url_linktext,
         'search_phrase': search_phrase,
         'results': results,
+        'number_found' : number_found,
         'upload_url': blobstore.create_upload_url('/upload')
     }
 
@@ -132,7 +129,7 @@ class DeleteNumber(webapp2.RequestHandler):
   def post(self):
     documents_to_delete = int(self.request.get('documents_to_delete'))
     doc_index = search.Index(name=_INDEX_NAME)
-    for i in range(1,documents_to_delete):    
+    for i in range(0,documents_to_delete):    
       document_ids = [document.doc_id
                       for document in doc_index.get_range(limit=200 , ids_only=True)]
       if document_ids:    
