@@ -47,7 +47,7 @@
     <tr>
     {% for field in scored_document.fields %}
         <td>
-        {{field.value}} &nbsp;
+        <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
         </td>
     {% endfor %}
     </tr>

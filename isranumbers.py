@@ -136,6 +136,19 @@ class DeleteNumber(webapp2.RequestHandler):
         doc_index.delete(document_ids)
     self.redirect('/')
 
+
+class SingleNumber(webapp2.RequestHandler):
+    def get(self):
+        doc_id_to_display = self.request.get('single_number')
+        number_to_display = search.Index(_INDEX_NAME).get(doc_id_to_display)
+        self.display_number(number_to_display)
+
+    def display_number(self,number_to_display):
+        template_values = {'number_to_display' : number_to_display}
+        template = jinja_environment.get_template('single_number.html')
+        self.response.out.write(template.render(template_values))
+
+
 def get_author():
   author = "None"
   if users.get_current_user():
@@ -161,6 +174,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/sign', InsertNumber),
                                ('/upload', UploadCsv),
                                ('/worker', CsvWorker),
-                               ('/delete', DeleteNumber)],
+                               ('/delete', DeleteNumber),
+                               ('/singlenum', SingleNumber)],
                               debug=True)
 
