@@ -77,13 +77,18 @@ class MainPage(webapp2.RequestHandler):
         'search_phrase': search_phrase,
         'results': results,
         'number_found' : number_found,
-        'upload_url': blobstore.create_upload_url('/upload')
     }
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
         
 class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
+  def get(self): 
+    template_values = {
+        'upload_url': blobstore.create_upload_url('/upload')
+    }
+    template = jinja_environment.get_template('insert_file.html')
+    self.response.out.write(template.render(template_values))
   def post(self):
     file_info = self.get_uploads('csv_file')[0]
     key_str = str(file_info.key())
@@ -112,6 +117,9 @@ class CsvWorker(webapp2.RequestHandler):
 
 
 class InsertNumber(webapp2.RequestHandler):
+  def get(self): 
+    template = jinja_environment.get_template('insert_number.html')
+    self.response.out.write(template.render())
   def post(self):
     add_to_search_index(get_author(),
                         float(self.request.get('number')),
@@ -126,6 +134,9 @@ class InsertNumber(webapp2.RequestHandler):
     self.redirect('/')
     
 class DeleteNumber(webapp2.RequestHandler):
+  def get(self):
+    template = jinja_environment.get_template('delete_numbers.html')
+    self.response.out.write(template.render())
   def post(self):
     documents_to_delete = int(self.request.get('documents_to_delete'))
     doc_index = search.Index(name=_INDEX_NAME)
@@ -171,7 +182,7 @@ def add_to_search_index(author,number,units,description,labels,source,year,month
 
 
 app = webapp2.WSGIApplication([('/', MainPage),
-                               ('/sign', InsertNumber),
+                               ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
                                ('/worker', CsvWorker),
                                ('/delete', DeleteNumber),

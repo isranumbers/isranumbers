@@ -1,0 +1,66 @@
+<html lang="he">
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+<body>
+<div dir="rtl">
+<div><h1>
+נתונים בישראל
+</h1></div>
+
+{%include "content.html" %}
+
+<form action="/insertnumber" method="post">
+    <br>
+    <table>
+    <tr>
+    <td id="InsertData">המספר:</td><td> <textarea name="number" rows="1" cols="8"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">יחידות:</td><td> <textarea name="units" rows="1" cols="14"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">תיאור:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
+    </tr>
+    <td id="InsertData">תגיות:</td><td> <textarea name="labels" rows="4" cols="20"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">המקור:</td><td> <textarea name="source" rows="1" cols="14"></textarea></td>
+    </tr>
+    <tr>
+      <td id="InsertData">שנת הנתון:</td>
+      <td> <select name="year_of_number">
+      <option value="-1">ללא</option>
+      {% for year in range(1900,2016) %}
+        <option>{{year}}
+      {% endfor %}
+      </select></td>
+    </tr>
+    <tr>
+      <td id="InsertData">חודש הנתון:</td>
+      <td> <select name="month_of_number">
+      <option value="-1">ללא</option>
+      {% for month in range(1,13) %}
+        <option>{{month}}
+      {% endfor %}
+      </select></td>
+    </tr>
+    <tr>
+      <td id="InsertData">יום הנתון:</td>
+      <td> <select name="day_of_number">
+      <option value="-1">ללא</option>
+      {% for day in range(1,32) %}
+        <option>{{day}}
+      {% endfor %}
+      </select></td>
+    </tr>
+    </table>     
+    <div><input type="submit" value="הזן מספר"></div>
+</form>
+</div>
+</body>
+</html>

@@ -1,5 +1,4 @@
 <html lang="he">
-{# rtl not in the html or body tag because internet explorer have a problem with that#}
 <head dir="rtl">
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <title>
@@ -15,11 +14,11 @@
 
 {%include "content.html" %}
 
-<div>
-{% for field in number_to_display.fields %}
-    {{field.name}} : {{field.value}}
-    <p>
-{% endfor %}
+<form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="csv_file">
+    <input type="submit" value="העלה קובץ">
+</form>
+
 </div>
 </body>
-</html> 
+</html>
