@@ -22,7 +22,7 @@ jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 _INDEX_NAME = 'allnumbers'
-
+_SERIES_INDEX_NAME = 'allseries'
 
 class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
@@ -104,7 +104,7 @@ class CsvWorker(webapp2.RequestHandler):
     csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
     
     for row in csv_file_content:      
-      add_to_search_index(get_author(),          
+      add_to_number_index(get_author(),          
                           float(row[0]),
                           row[1],
                           row[2],
@@ -121,7 +121,7 @@ class InsertNumber(webapp2.RequestHandler):
     template = jinja_environment.get_template('insert_number.html')
     self.response.out.write(template.render())
   def post(self):
-    add_to_search_index(get_author(),
+    add_to_number_index(get_author(),
                         float(self.request.get('number')),
                         self.request.get('units'),
                         self.request.get('description'),
@@ -167,7 +167,7 @@ def get_author():
   return author  
 
 
-def add_to_search_index(author,number,units,description,labels,source,year,month,day):
+def add_to_number_index(author,number,units,description,labels,source,year,month,day):
   search.Index(name=_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
               search.NumberField(name='number', value=number),
@@ -178,14 +178,51 @@ def add_to_search_index(author,number,units,description,labels,source,year,month
               search.NumberField(name='year_of_number', value=year),
               search.NumberField(name='month_of_number', value=month),
               search.NumberField(name='day_of_number', value=day)]))
-    
 
+    
+class InsertSeries(webapp2.RequestHandler):
+  def get(self): 
+    template = jinja_environment.get_template('insert_series.html')
+    self.response.out.write(template.render())
+  def post(self):
+    add_to_series_index(get_author(),
+                        '',
+                        self.request.get('description'),
+                        self.request.get('labels'))
+    self.redirect('/')
+
+
+class AddNumberToSeries(webapp2.RequestHandler):
+  def get(self): 
+    template = jinja_environment.get_template('add_number_to_series.html')
+    self.response.out.write(template.render())
+  def post(self):
+    add_number_to_series(self.request.get('number_id'),
+                         self.request.get('series_id'))
+    self.redirect('/')
+
+def add_to_series_index(author,list_of_number_ids,description,labels):
+  search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
+    fields=[search.TextField(name='author', value=author),
+            search.TextField(name='list_of_number_ids', value=list_of_number_ids),
+            search.TextField(name='description', value=description),
+            search.TextField(name='labels', value=labels)]))
+
+def add_number_to_series(number_id,series_id):
+  series=search.Index(name=_SERIES_INDEX_NAME).get(series_id)
+  print series.fields[1].value
+### we stopped here
+  break
+  search.Index(name=_SERIES_INDEX_NAME).put(series)
+  
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
                                ('/worker', CsvWorker),
                                ('/delete', DeleteNumber),
-                               ('/singlenum', SingleNumber)],
+                               ('/singlenum', SingleNumber),
+                               ('/insertseries', InsertSeries),
+                               ('/addnumbertoseries', AddNumberToSeries)],
                               debug=True)
 

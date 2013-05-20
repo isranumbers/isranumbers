@@ -1,0 +1,30 @@
+<html lang="he">
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+<body>
+<div dir="rtl">
+<div><h1>
+נתונים בישראל
+</h1></div>
+
+{%include "content.html" %}
+
+<form action="/insertseries" method="post">
+    <br>
+    <table>
+    <tr>
+    <td id="InsertData">תיאור:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
+    </tr>
+    <td id="InsertData">תגיות:</td><td> <textarea name="labels" rows="4" cols="20"></textarea></td>
+    </tr>
+    </table>     
+    <div><input type="submit" value="הזן סדרה"></div>
+</form>
+</div>
+</body>
+</html>
