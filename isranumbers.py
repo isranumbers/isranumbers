@@ -177,14 +177,17 @@ def add_to_number_index(author,number,units,description,labels,source,year,month
               search.TextField(name='source', value=source),
               search.NumberField(name='year_of_number', value=year),
               search.NumberField(name='month_of_number', value=month),
-              search.NumberField(name='day_of_number', value=day)]))
+              search.NumberField(name='day_of_number', value=day),
+	      search.TextField(name='contained_in_series', value='')]))
 
     
 class InsertSeries(webapp2.RequestHandler):
   def get(self): 
+    logging.info("getting")
     template = jinja_environment.get_template('insert_series.html')
     self.response.out.write(template.render())
   def post(self):
+    logging.info("posting")
     add_to_series_index(get_author(),
                         '',
                         self.request.get('description'),
@@ -197,25 +200,42 @@ class AddNumberToSeries(webapp2.RequestHandler):
     template = jinja_environment.get_template('add_number_to_series.html')
     self.response.out.write(template.render())
   def post(self):
-    add_number_to_series(self.request.get('number_id'),
-                         self.request.get('series_id'))
+    add_number_to_series(unicode(self.request.get('number_id')),
+                         unicode(self.request.get('series_id')))
     self.redirect('/')
 
 def add_to_series_index(author,list_of_number_ids,description,labels):
-  search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
+  putresult=search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
             search.TextField(name='list_of_number_ids', value=list_of_number_ids),
             search.TextField(name='description', value=description),
             search.TextField(name='labels', value=labels)]))
+  logging.info("put result is")
+  logging.info(putresult)
 
 def add_number_to_series(number_id,series_id):
+  logging.info(series_id)
   series=search.Index(name=_SERIES_INDEX_NAME).get(series_id)
-  print series.fields[1].value
-### we stopped here
-  break
-  search.Index(name=_SERIES_INDEX_NAME).put(series)
-  
+  logging.info( "Series is:")
+  logging.info(series)
 
+  updated_fields = []
+  for field in series.fields:
+      if field.name == u'list_of_number_ids' and string.find(field.value,number_id) == -1:
+        updated_fields.append(search.TextField(name=field.name,
+                                                 value=field.value + u' ' + number_id))
+      else:
+        updated_fields.append(field)
+  search.Index(name=_SERIES_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
+  number=search.Index(name=_INDEX_NAME).get(number_id)
+  updated_fields = []
+  for field in number.fields:
+      if field.name == u'contained_in_series' and string.find(field.value,series_id) == -1:
+        updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + series_id))
+      else:
+        updated_fields.append(field)
+  search.Index(name=_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
+    
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
