@@ -62,6 +62,7 @@ class MainPage(webapp2.RequestHandler):
                                                   returned_fields=['author', 'number', 'units', 'description'])
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+#ToDo consider searching both in the number and series indices and return results for numbers and series
 
     
     if users.get_current_user():
@@ -158,6 +159,7 @@ class SingleNumber(webapp2.RequestHandler):
         template_values = {'number_to_display' : number_to_display}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
+# ToDo: make list of series show abbrev series description and link to series page.
 
 
 def get_author():
@@ -238,14 +240,37 @@ def add_number_to_series(number_id,series_id):
    
 class DisplaySeries(webapp2.RequestHandler):
     def get(self):
-      series_id_to_display = self.request.get('series_id')
+      series_id_to_display = self.request.get('series_id_to_display')
       series_to_display = search.Index(_SERIES_INDEX_NAME).get(series_id_to_display)
       self.display_series(series_to_display)
     def display_series(self, series_to_display):
-      for field in series_to_display.fields:
-        if field.name == u'number'
-          self.request.out.write(field.value)
-          # we stopped here
+        for field in series_to_display.fields:
+            if field.name == u'list_of_number_ids':
+                number_ids_in_series=field.value.split()
+        list_of_numbers=[]
+        for number_id in number_ids_in_series:
+            num = None
+            year = None
+            month = None
+            day = None
+            for field in search.Index(_INDEX_NAME).get(number_id).fields:
+                if field.name==u'number':
+                    num = field.value
+                if field.name==u'year_of_number':
+                    year = field.value
+                if field.name==u'month_of_number':
+                    month=field.value
+                if field.name==u'day_of_number':
+                    day=field.value
+            list_of_numbers.append((num,year,month,day))
+
+        template_values = {'series_to_display' : series_to_display,
+                            'list_of_numbers' : list_of_numbers}
+        template = jinja_environment.get_template('single_series.html')
+        self.response.out.write(template.render(template_values))
+        # ToDo: add links to numbers.
+# ToDo: make graphs if possible.
+# ToDo: automatically create time series for LAMAS data.
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),

@@ -1,0 +1,33 @@
+<html lang="he">
+{# rtl not in the html or body tag because internet explorer have a problem with that#}
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+<body>
+<div dir="rtl">
+<div><h1>
+נתונים בישראל
+</h1></div>
+
+{%include "content.html" %}
+
+<div>
+{% for field in series_to_display.fields %}
+    {{field.name}} : {{field.value}}
+    <p>
+{% endfor %}
+</div>
+<div>
+{% for full_number_data in list_of_numbers %}
+    {% for field in full_number_data %}
+        {{field}}
+    {% endfor %}
+    <p>
+{% endfor %} 
+</div>
+</body>
+</html> 
