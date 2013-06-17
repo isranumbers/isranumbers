@@ -235,7 +235,18 @@ def add_number_to_series(number_id,series_id):
       else:
         updated_fields.append(field)
   search.Index(name=_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
-    
+   
+class DisplaySeries(webapp2.RequestHandler):
+    def get(self):
+      series_id_to_display = self.request.get('series_id')
+      series_to_display = search.Index(_SERIES_INDEX_NAME).get(series_id_to_display)
+      self.display_series(series_to_display)
+    def display_series(self, series_to_display):
+      for field in series_to_display.fields:
+        if field.name == u'number'
+          self.request.out.write(field.value)
+          # we stopped here
+
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
@@ -243,6 +254,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/delete', DeleteNumber),
                                ('/singlenum', SingleNumber),
                                ('/insertseries', InsertSeries),
-                               ('/addnumbertoseries', AddNumberToSeries)],
+                               ('/addnumbertoseries', AddNumberToSeries),
+                               ('/displayseries', DisplaySeries)],
                               debug=True)
 
