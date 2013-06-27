@@ -247,6 +247,9 @@ class DisplaySeries(webapp2.RequestHandler):
         for field in series_to_display.fields:
             if field.name == u'list_of_number_ids':
                 number_ids_in_series=field.value.split()
+
+            if field.name == u'description':
+                series_description=field.value
         list_of_numbers=[]
         for number_id in number_ids_in_series:
             num = None
@@ -262,10 +265,18 @@ class DisplaySeries(webapp2.RequestHandler):
                     month=field.value
                 if field.name==u'day_of_number':
                     day=field.value
-            list_of_numbers.append((num,year,month,day))
+                if field.name==u'units':
+                    units=field.value
+            list_of_numbers.append({'number' : num,
+                                    'year' : year,
+                                    'month' : month,
+                                    'day' : day})
+        sorted_list_of_numbers = sorted(list_of_numbers, key=lambda k: k['year'])
 
         template_values = {'series_to_display' : series_to_display,
-                            'list_of_numbers' : list_of_numbers}
+                            'list_of_numbers' : sorted_list_of_numbers,
+                            'series_description' : series_description,
+                            'units' : units}
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.

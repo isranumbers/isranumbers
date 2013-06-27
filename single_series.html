@@ -6,6 +6,29 @@
   נתונים בישראל
   </title>
   <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable([
+          ['Year', '{{units}}'],
+          {% for number in list_of_numbers %}
+            [{{number['year']}}, {{number['number']}}],
+          {% endfor %} 
+        ]);
+
+        var options = {
+          title: '{{series_description}}'
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+      }
+    </script>
+
+
 </head>
 <body>
 <div dir="rtl">
@@ -23,11 +46,12 @@
 </div>
 <div>
 {% for full_number_data in list_of_numbers %}
-    {% for field in full_number_data %}
-        {{field}}
-    {% endfor %}
+    {{full_number_data['year']}},{{full_number_data['number']}}
     <p>
 {% endfor %} 
 </div>
+
+
+<div id="chart_div" style="width: 900px; height: 500px;"></div>
 </body>
 </html> 
