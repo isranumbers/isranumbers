@@ -7,6 +7,7 @@ import os
 import string
 import csv
 import logging
+import xml.etree.cElementTree as ET
 
 from google.appengine.ext import blobstore
 from google.appengine.ext.webapp import blobstore_handlers
@@ -96,6 +97,54 @@ class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
     taskqueue.add(url='/worker',params = {'key_str' : key_str})
     self.redirect('/')
 
+class UploadSeriesXml(blobstore_handlers.BlobstoreUploadHandler):
+  def get(self): 
+    template_values = {
+        'upload_url': blobstore.create_upload_url('/uploadseriesxml')
+    }
+    template = jinja_environment.get_template('insert_file.html')
+    self.response.out.write(template.render(template_values))
+  def post(self):
+    file_info = self.get_uploads('csv_file')[0]
+    key_str = str(file_info.key())
+    taskqueue.add(url='/workerseriesxml',params = {'key_str' : key_str})
+    self.redirect('/')
+
+class SeriesXmlWorker(webapp2.RequestHandler):
+  def post(self):
+    logging.info("worker called")
+    file_info = blobstore.BlobInfo(blobstore.BlobKey(self.request.get('key_str')))
+    reader = blobstore.BlobReader(file_info)
+    tree = ET.parse(reader)
+    root = tree.getroot()
+    author=get_author()
+    for child in root:
+        #list_of_number_ids
+        description=child.attrib['description']
+        labels=child.attrib['labels']
+	series_type=child.attrib['series_type']
+        units=child.attrib['unit']
+	source=child.attrib['source']
+        #series_id=add_to_series_index(author,list_of_number_ids,description,labels,series_type)
+	for number in child:
+	    value=number.attrib['value']
+	    year='-1'
+	    month='-1'
+	    day='-1'
+	    time=number.attrib['time_period']
+            if time.find('-') != -1:
+                year = time.split('-')[0]
+                month = time.split('-')[1]
+		if len(time.split)==3:
+		    day = time.split('-')[2] 
+   	    else:
+		year=time
+	    #number_id=add_to_number_index(author,value,units,description,labels,source,year,month,day)
+            #add_number_to_series(series_id,number_id)
+
+   #we stopped here     
+    
+
 class CsvWorker(webapp2.RequestHandler):
   def post(self):
     logging.info("worker called")
@@ -170,7 +219,7 @@ def get_author():
 
 
 def add_to_number_index(author,number,units,description,labels,source,year,month,day):
-  search.Index(name=_INDEX_NAME).put(search.Document(
+  x = search.Index(name=_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
               search.NumberField(name='number', value=number),
               search.TextField(name='units', value=units),
@@ -181,7 +230,8 @@ def add_to_number_index(author,number,units,description,labels,source,year,month
               search.NumberField(name='month_of_number', value=month),
               search.NumberField(name='day_of_number', value=day),
 	      search.TextField(name='contained_in_series', value='')]))
-
+  logging.info(dir(x[0]))
+  logging.info(x)
     
 class InsertSeries(webapp2.RequestHandler):
   def get(self): 
@@ -191,9 +241,9 @@ class InsertSeries(webapp2.RequestHandler):
   def post(self):
     logging.info("posting")
     add_to_series_index(get_author(),
-                        '',
                         self.request.get('description'),
-                        self.request.get('labels'))
+                        self.request.get('labels'),
+			self.request.get('series_type'))
     self.redirect('/')
 
 
@@ -206,12 +256,13 @@ class AddNumberToSeries(webapp2.RequestHandler):
                          unicode(self.request.get('series_id')))
     self.redirect('/')
 
-def add_to_series_index(author,list_of_number_ids,description,labels):
+def add_to_series_index(author,description,labels,series_type):
   putresult=search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
-            search.TextField(name='list_of_number_ids', value=list_of_number_ids),
+            search.TextField(name='list_of_number_ids', value=''),
             search.TextField(name='description', value=description),
-            search.TextField(name='labels', value=labels)]))
+            search.TextField(name='labels', value=labels),
+	    search.TextField(name='series_type',value=series_type)]))
   logging.info("put result is")
   logging.info(putresult)
 
@@ -250,7 +301,9 @@ class DisplaySeries(webapp2.RequestHandler):
 
             if field.name == u'description':
                 series_description=field.value
-        list_of_numbers=[]
+            if field.name == u'series_type':
+		series_type=field.value
+	list_of_numbers=[]
         for number_id in number_ids_in_series:
             num = None
             year = None
@@ -260,33 +313,39 @@ class DisplaySeries(webapp2.RequestHandler):
                 if field.name==u'number':
                     num = field.value
                 if field.name==u'year_of_number':
-                    year = field.value
+                    year = int(field.value)
                 if field.name==u'month_of_number':
-                    month=field.value
+		    month=int(field.value)
+		    if field.value==-1:
+		        month=1
                 if field.name==u'day_of_number':
-                    day=field.value
+                    day=int(field.value)
+		    if field.value==-1:
+		        day=1
                 if field.name==u'units':
                     units=field.value
             list_of_numbers.append({'number' : num,
                                     'year' : year,
                                     'month' : month,
                                     'day' : day})
-        sorted_list_of_numbers = sorted(list_of_numbers, key=lambda k: k['year'])
-
+        sorted_list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
+        
         template_values = {'series_to_display' : series_to_display,
                             'list_of_numbers' : sorted_list_of_numbers,
                             'series_description' : series_description,
-                            'units' : units}
+                            'units' : units,
+			    'series_type' : series_type}
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
-# ToDo: make graphs if possible.
 # ToDo: automatically create time series for LAMAS data.
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
+                               ('/uploadseriesxml', UploadSeriesXml),
                                ('/worker', CsvWorker),
+                               ('/workerseriesxml', SeriesXmlWorker),
                                ('/delete', DeleteNumber),
                                ('/singlenum', SingleNumber),
                                ('/insertseries', InsertSeries),
