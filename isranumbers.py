@@ -119,15 +119,22 @@ class SeriesXmlWorker(webapp2.RequestHandler):
     root = tree.getroot()
     author=get_author()
     for child in root:
-        #list_of_number_ids
+        list_of_number_ids=u''
         description=child.attrib['description']
         labels=child.attrib['labels']
 	series_type=child.attrib['series_type']
         units=child.attrib['unit']
 	source=child.attrib['source']
-        #series_id=add_to_series_index(author,list_of_number_ids,description,labels,series_type)
+        logging.info(description)
+	data_fields=[search.TextField(name='author', value=author),
+            search.TextField(name='description', value=description),
+            search.TextField(name='labels', value=labels),
+	    search.TextField(name='series_type',value=series_type)]
+        series_id=search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
+    	    fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
+	logging.info(series_id)
 	for number in child:
-	    value=number.attrib['value']
+	    value=float(number.attrib['value'])
 	    year='-1'
 	    month='-1'
 	    day='-1'
@@ -139,8 +146,21 @@ class SeriesXmlWorker(webapp2.RequestHandler):
 		    day = time.split('-')[2] 
    	    else:
 		year=time
-	    #number_id=add_to_number_index(author,value,units,description,labels,source,year,month,day)
-            #add_number_to_series(series_id,number_id)
+	    number_id=search.Index(name=_INDEX_NAME).put(search.Document(
+    	      fields=[search.TextField(name='author', value=author),
+              search.NumberField(name='number', value=value),
+              search.TextField(name='units', value=units),
+              search.TextField(name='description', value=description),
+              search.TextField(name='labels', value=labels),
+              search.TextField(name='source', value=source),
+              search.NumberField(name='year_of_number', value=int(year)),
+              search.NumberField(name='month_of_number', value=int(month)),
+              search.NumberField(name='day_of_number', value=int(day)),
+	      search.TextField(name='contained_in_series', value=series_id)]))[0].id
+            list_of_number_ids+=u" " + number_id
+  	    search.Index(name=_SERIES_INDEX_NAME).put(search.Document(fields=data_fields, doc_id = series_id))
+        search.Index(name=_SERIES_INDEX_NAME).put(search.Document(doc_id=series_id ,
+    	    fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
    #we stopped here     
     
@@ -265,6 +285,7 @@ def add_to_series_index(author,description,labels,series_type):
 	    search.TextField(name='series_type',value=series_type)]))
   logging.info("put result is")
   logging.info(putresult)
+  return putresult
 
 def add_number_to_series(number_id,series_id):
   logging.info(series_id)
