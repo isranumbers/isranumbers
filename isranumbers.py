@@ -142,7 +142,7 @@ class SeriesXmlWorker(webapp2.RequestHandler):
             if time.find('-') != -1:
                 year = time.split('-')[0]
                 month = time.split('-')[1]
-		if len(time.split)==3:
+		if len(time.split('-'))==3:
 		    day = time.split('-')[2] 
    	    else:
 		year=time
