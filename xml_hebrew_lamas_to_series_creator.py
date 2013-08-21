@@ -5,7 +5,7 @@ import os
 #copying the original file to deal with exceptions in uploading the data
 #(manipulate original data to be parsible)
 
-source_name = 'timeseries_e'
+source_name = 'timeseries_h'
 target_name_prefix = source_name + '_chunk'
 
 source = open(source_name + '.xml', 'rt')
@@ -18,7 +18,7 @@ for line in source:
         firstline = line
         break
     else:
-        line = line.replace('iso-8859-8-i','utf-8')
+        line = line.replace('iso-8859-8-i','iso-8859-8')
         filestart.append(line)
 
 targetname = target_name_prefix + '%d.xml' % fileindex
@@ -38,11 +38,9 @@ for line in source:
     line = line.replace('&artic', '&amp;artic')
     line = line.replace('&scien', '&amp;scien')
     line = line.replace('&Samaria', '&amp;Samaria')
-    line = line.replace(chr(0xa0), ' ')
-    line = line.replace(chr(0xb7), ' ')
-    line = line.replace(chr(0xee), '')
-    line = line.replace(chr(0x96), ' ')
-    line = line.replace(chr(0x92), "'")
+    line = line.replace(chr(0xC5), "")
+    line = line.replace('<sub>', "&lt;sub&gt;")
+    line = line.replace('</sub>', "&lt;/sub&gt;")
 
     target[fileindex].write(line)
     count+=1
@@ -52,12 +50,10 @@ for line in source:
             line1 = line1.replace('&glass', '&amp;glass')
             line1 = line1.replace('&artic', '&amp;artic')
             line1 = line1.replace('&scien', '&amp;scien')
-            line1 = line1.replace(chr(0xa0), ' ')
-            line1 = line1.replace(chr(0xb7), ' ')
             line1 = line1.replace('&Samaria', '&amp;Samaria')
-            line1 = line1.replace(chr(0xee), '')
-            line1 = line1.replace(chr(0x96), ' ')
-            line1 = line1.replace(chr(0x92), "'")
+	    line1 = line1.replace(chr(0xC5), "")
+	    line1 = line1.replace('<sub>', "&lt;sub&gt;")
+	    line1 = line1.replace('</sub>', "&lt;/sub&gt;")
             if line1.startswith('<Series'):
                 nextline = line1
                 fileindex+=1
@@ -79,8 +75,8 @@ for targetf in target:
     targetf.close()
 source.close()
 
-source_name_prefix = 'timeseries_e_chunk'
-target_name_prefix = 'xml_series_chunk'
+source_name_prefix = 'timeseries_h_chunk'
+target_name_prefix = 'hebrew_xml_series_chunk'
 file_index = 0
 
 while os.path.exists(source_name_prefix + '%d.xml' % file_index):
