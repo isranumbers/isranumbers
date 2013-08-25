@@ -41,6 +41,7 @@ for line in source:
     line = line.replace(chr(0xC5), "")
     line = line.replace('<sub>', "&lt;sub&gt;")
     line = line.replace('</sub>', "&lt;/sub&gt;")
+    line = line.replace("".join([chr(0xf9)]) + "''" + "".join([chr(0xe7)]), "".join([chr(0xf9) , chr(0xe7)]))
 
     target[fileindex].write(line)
     count+=1
@@ -51,9 +52,10 @@ for line in source:
             line1 = line1.replace('&artic', '&amp;artic')
             line1 = line1.replace('&scien', '&amp;scien')
             line1 = line1.replace('&Samaria', '&amp;Samaria')
-	    line1 = line1.replace(chr(0xC5), "")
-	    line1 = line1.replace('<sub>', "&lt;sub&gt;")
-	    line1 = line1.replace('</sub>', "&lt;/sub&gt;")
+            line1 = line1.replace(chr(0xC5), "")
+            line1 = line1.replace('<sub>', "&lt;sub&gt;")
+            line1 = line1.replace('</sub>', "&lt;/sub&gt;")
+            line1 = line1.replace("".join([chr(0xf9)]) + "''" + "".join([chr(0xe7)]) , "".join([chr(0xf9) , chr(0xe7)]))
             if line1.startswith('<Series'):
                 nextline = line1
                 fileindex+=1
