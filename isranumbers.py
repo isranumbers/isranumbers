@@ -222,10 +222,24 @@ class SingleNumber(webapp2.RequestHandler):
     def get(self):
         doc_id_to_display = self.request.get('single_number')
         number_to_display = search.Index(_INDEX_NAME).get(doc_id_to_display)
-        self.display_number(number_to_display)
+#begin new part 17.10.2013
+        for field in number_to_display.fields:
+            if field.name == u'contained_in_series':
+                seperate_series = field.value.split()
+        list_of_series_description=[]
+        for series_id in seperate_series :
+            series = search.Index(_SERIES_INDEX_NAME).get(series_id)
+            for field in series.fields:
+                if field.name == u'description':
+                    list_of_series_description.append((series_id, field.value))
+#        for field in number_to_display.fields:
+#            if field.name == u'contained_in_series':
+ #               field.value = list_of_series_description
+#untill here new part 17.10.2013
+        self.display_number(number_to_display,list_of_series_description)
 
-    def display_number(self,number_to_display):
-        template_values = {'number_to_display' : number_to_display}
+    def display_number(self,number_to_display,list_of_series_description):
+        template_values = {'number_to_display' : number_to_display , 'list_of_series_description' : list_of_series_description}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and link to series page.
