@@ -21,9 +21,18 @@ li
 {
 float:right;
 }
-a
+/*
+ a
 {
 display:block;
 width:160px;
+}*/
+.navigation_bar
+{
+align:center; width:100%; table-layout:fixed; text-align:center; border: 1px solid black;
 }
-
+.navigation_bar
+td
+{
+border: 1px solid black
+}

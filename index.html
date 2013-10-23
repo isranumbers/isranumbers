@@ -1,32 +1,16 @@
 <html lang="he">
-{# rtl not in the html or body tag because internet explorer have a problem with that#}
 <head dir="rtl">
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <title>
   נתונים בישראל
   </title>
   <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
-{#
-  <script>
-    function CreateYearList()
-    {
-    option = document.createElement("option");
-    for (var i = 1900; i<2015 ; i++)
-      {
-      option.innerHTML = "" + i + "";
-      select.appendChild(option);
-      } 
-    }
-  </script>
-#}  
 </head>
+
 <body>
 <div dir="rtl">
-<div><h1>
-נתונים בישראל
-</h1></div>
 
-{%include "content.html" %}
+{%include "content_hebrew.html" %}
 
 <div><h2>
 האתר מכיל {{ number_found }} נתונים

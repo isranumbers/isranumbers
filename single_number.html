@@ -1,5 +1,4 @@
 <html lang="he">
-{# rtl not in the html or body tag because internet explorer have a problem with that#}
 <head dir="rtl">
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <title>
@@ -7,20 +6,16 @@
   </title>
   <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
 </head>
+
 <body>
 <div dir="rtl">
-<div><h1>
-נתונים בישראל
-</h1></div>
 
-{%include "content.html" %}
+{%include "content_hebrew.html" %}
 
 <div>
 {% for field in number_to_display.fields %}
     {% if field.name == "contained_in_series" %}
-        {{field.name}} :
-        {% for series in list_of_series_description %} 
-            <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a>
+        {{field.name}} : {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a>
         {% endfor %}
     {% else %}
         {{field.name}} : {{field.value}}

@@ -1,5 +1,4 @@
 <html lang="he">
-{# rtl not in the html or body tag because internet explorer have a problem with that#}
 <head dir="rtl">
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <title>
@@ -52,11 +51,8 @@ function drawChart() {
 </head>
 <body>
 <div dir="rtl">
-<div><h1>
-נתונים בישראל
-</h1></div>
 
-{%include "content.html" %}
+{%include "content_hebrew.html" %}
 
 <div>
 {% for field in series_to_display.fields %}
