@@ -37,6 +37,11 @@
         <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
         </td>
     {% endfor %}
+    {% for expression in scored_document.expressions %}
+        <td>
+        <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
+        </td>
+    {% endfor %}    
     </tr>
 {% endfor %}
 </table>
