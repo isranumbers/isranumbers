@@ -22,8 +22,7 @@ from google.appengine.api import taskqueue
 jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
-_INDEX_NAME = 'allnumbers'
-_SERIES_INDEX_NAME = 'allseries'
+_INDEX_NAME = 'data_index'
 
 class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
@@ -60,11 +59,13 @@ class MainPage(webapp2.RequestHandler):
     expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
     sort_opts = search.SortOptions(expressions=expr_list)
     search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
-                                                  returned_fields=['author', 'number', 'units', 'description'])
+                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type'],
+                                                  snippeted_fields=['description','source'])
+
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
 #ToDo consider searching both in the number and series indices and return results for numbers and series
-
+    logging.info(results)
     
     if users.get_current_user():
         url = users.create_logout_url(self.request.uri)
@@ -130,7 +131,7 @@ class SeriesXmlWorker(webapp2.RequestHandler):
             search.TextField(name='description', value=description),
             search.TextField(name='labels', value=labels),
 	    search.TextField(name='series_type',value=series_type)]
-        series_id=search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
+        series_id=search.Index(name=_INDEX_NAME).put(search.Document(
     	    fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
 	logging.info(series_id)
 	for number in child:
@@ -158,8 +159,8 @@ class SeriesXmlWorker(webapp2.RequestHandler):
               search.NumberField(name='day_of_number', value=int(day)),
 	      search.TextField(name='contained_in_series', value=series_id)]))[0].id
             list_of_number_ids+=u" " + number_id
-  	    search.Index(name=_SERIES_INDEX_NAME).put(search.Document(fields=data_fields, doc_id = series_id))
-        search.Index(name=_SERIES_INDEX_NAME).put(search.Document(doc_id=series_id ,
+  	    search.Index(name=_INDEX_NAME).put(search.Document(fields=data_fields, doc_id = series_id))
+        search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
     	    fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
    #we stopped here     
@@ -227,7 +228,7 @@ class SingleNumber(webapp2.RequestHandler):
                 seperate_series = field.value.split()
         list_of_series_description=[]
         for series_id in seperate_series :
-            series = search.Index(_SERIES_INDEX_NAME).get(series_id)
+            series = search.Index(_INDEX_NAME).get(series_id)
             for field in series.fields:
                 if field.name == u'description':
                     list_of_series_description.append((series_id, field.value))
@@ -286,7 +287,7 @@ class AddNumberToSeries(webapp2.RequestHandler):
     self.redirect('/')
 
 def add_to_series_index(author,description,labels,series_type):
-  putresult=search.Index(name=_SERIES_INDEX_NAME).put(search.Document(
+  putresult=search.Index(name=_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
             search.TextField(name='list_of_number_ids', value=''),
             search.TextField(name='description', value=description),
@@ -298,7 +299,7 @@ def add_to_series_index(author,description,labels,series_type):
 
 def add_number_to_series(number_id,series_id):
   logging.info(series_id)
-  series=search.Index(name=_SERIES_INDEX_NAME).get(series_id)
+  series=search.Index(name=_INDEX_NAME).get(series_id)
   logging.info( "Series is:")
   logging.info(series)
 
@@ -309,7 +310,7 @@ def add_number_to_series(number_id,series_id):
                                                  value=field.value + u' ' + number_id))
       else:
         updated_fields.append(field)
-  search.Index(name=_SERIES_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
+  search.Index(name=_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
   number=search.Index(name=_INDEX_NAME).get(number_id)
   updated_fields = []
   for field in number.fields:
@@ -322,7 +323,7 @@ def add_number_to_series(number_id,series_id):
 class DisplaySeries(webapp2.RequestHandler):
     def get(self):
       series_id_to_display = self.request.get('series_id_to_display')
-      series_to_display = search.Index(_SERIES_INDEX_NAME).get(series_id_to_display)
+      series_to_display = search.Index(_INDEX_NAME).get(series_id_to_display)
       self.display_series(series_to_display)
     def display_series(self, series_to_display):
         for field in series_to_display.fields:
