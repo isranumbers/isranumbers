@@ -31,18 +31,35 @@
 </tr>
    
 {% for scored_document in results %}
-    <tr>
     {% for field in scored_document.fields %}
-        <td>
-        <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
-        </td>
-    {% endfor %}
-    {% for expression in scored_document.expressions %}
-        <td>
-        <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
-        </td>
-    {% endfor %}    
-    </tr>
+        {% if field.name == "series_type" %}
+        <tr>
+            {% for field in scored_document.fields %}
+                <td>
+                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+            {% for expression in scored_document.expressions %}
+                <td>
+                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+        </tr>
+        {% elif loop.last %}
+        <tr>
+            {% for field in scored_document.fields %}
+                <td>
+                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+            {% for expression in scored_document.expressions %}
+                <td>
+                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+        {% endif %}    
+        </tr>
+    {% endfor %}        
 {% endfor %}
 </table>
 

@@ -64,7 +64,6 @@ class MainPage(webapp2.RequestHandler):
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-#ToDo consider searching both in the number and series indices and return results for numbers and series
     logging.info(results)
     
     if users.get_current_user():
