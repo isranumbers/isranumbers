@@ -56,15 +56,28 @@ function drawChart() {
 
 <div>
 {% for field in series_to_display.fields %}
-    {{field.name}} : {{field.value}}
+    {% if field.name != "list_of_number_ids" %}
+        {{field.name}} : {{field.value}}
+    {% endif %}    
     <p>
 {% endfor %}
 </div>
 <div>
+<table border="1">
+<tr>
+<td> year </td> <td> number </td>
+</tr>
 {% for full_number_data in list_of_numbers %}
-    {{full_number_data['year']}},{{full_number_data['number']}}
-    <p>
+    <tr>
+    <td>
+    {{full_number_data['year']}}
+    </td>
+    <td>
+    {{full_number_data['number']}}
+    </td>
+    </tr>
 {% endfor %} 
+</table>
 </div>
 
 
