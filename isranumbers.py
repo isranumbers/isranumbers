@@ -364,7 +364,7 @@ class DisplaySeries(webapp2.RequestHandler):
                             'list_of_numbers' : sorted_list_of_numbers,
                             'series_description' : series_description,
                             'units' : units,
-			    'series_type' : series_type}
+		            	    'series_type' : series_type}
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
