@@ -231,10 +231,10 @@ class SingleNumber(webapp2.RequestHandler):
             for field in series.fields:
                 if field.name == u'description':
                     list_of_series_description.append((series_id, field.value))
-        self.display_number(number_to_display,list_of_series_description)
+        self.display_number(number_to_display,list_of_series_description,doc_id_to_display)
 
-    def display_number(self,number_to_display,list_of_series_description):
-        template_values = {'number_to_display' : number_to_display , 'list_of_series_description' : list_of_series_description}
+    def display_number(self,number_to_display,list_of_series_description,doc_id_to_display):
+        template_values = {'number_to_display' : number_to_display , 'list_of_series_description' : list_of_series_description , 'doc_id_to_display' : doc_id_to_display}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series
@@ -278,8 +278,13 @@ class InsertSeries(webapp2.RequestHandler):
 
 class AddNumberToSeries(webapp2.RequestHandler):
   def get(self): 
+    if self.request.get('number_to_add_id'):
+        number_to_add_id = self.request.get('number_to_add_id')
+    else :
+        number_to_add_id = ""    
+    template_values = {'number_to_add_id' : number_to_add_id}
     template = jinja_environment.get_template('add_number_to_series.html')
-    self.response.out.write(template.render())
+    self.response.out.write(template.render(template_values))
   def post(self):
     add_number_to_series(unicode(self.request.get('number_id')),
                          unicode(self.request.get('series_id')))

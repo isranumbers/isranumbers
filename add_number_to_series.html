@@ -16,19 +16,13 @@
     <br>
     <table>
     <tr>
-    <td id="InsertData">number id:</td><td> <textarea name="number_id" rows="1" cols="20"></textarea></td>
+    <td id="InsertData">number id:</td><td> <textarea name="number_id" rows="1" cols="20">{{ number_to_add_id }} </textarea></td>
     </tr>
-    <td id="InsertData">series id</td><td> <textarea name="series_id" rows="1" cols="20"></textarea></td>
+    <tr>
+    <td id="InsertData">series id:</td><td> <textarea name="series_id" rows="1" cols="20"></textarea></td>
     </tr>
     </table>     
     <div><input type="submit" value="הוסף מספר לסדרה"></div>
-</form>
-
-<form action="/displayseries" method ="get">
-    <br>
-    series id:<textarea name="series_id_to_display" rows="1" cols="20"></textarea>
-    <br>
-    <div><input type="submit" value="display series"></div>
 </form>
 
 </div>

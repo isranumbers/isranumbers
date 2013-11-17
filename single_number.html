@@ -23,5 +23,11 @@
     <p>
 {% endfor %}
 </div>
+<div>
+<form action="/addnumbertoseries">
+    <input type="hidden" name="number_to_add_id" value="{{doc_id_to_display}}">
+    <input type="submit" value="הוסף את המספר לסדרה">
+</form>
+</div>
 </body>
 </html>
