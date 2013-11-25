@@ -12,18 +12,78 @@
 
 {%include "content_hebrew.html" %}
 
-<form action="/addnumbertoseries" method="post">
-    <br>
-    <table>
-    <tr>
-    <td id="InsertData">number id:</td><td> <textarea name="number_id" rows="1" cols="20">{{ number_to_add_id }} </textarea></td>
-    </tr>
-    <tr>
-    <td id="InsertData">series id:</td><td> <textarea name="series_id" rows="1" cols="20"></textarea></td>
-    </tr>
-    </table>     
-    <div><input type="submit" value="הוסף מספר לסדרה"></div>
+<table class="navigation_bar">
+<br>
+<tr>
+<td colspan="2">
+תיאור הסדרה : 
+{{ description }}
+</td>
+</tr>
+<tr>
+<td>
+סוג הסדרה : 
+{{ series_type }}
+</td>
+<td>
+תגיות : 
+{{ labels }}
+</td>
+</tr>
+</table>
+
+<br>
+
+<form>חפש:
+  <input value="{{ search_phrase }}" name="search_phrase">
+  <input type="hidden" name="series_id" value="{{ series_id }}">
+  <input type="submit" value="בצע חיפוש">
 </form>
+
+
+<table border="2">
+<tr>
+<th>המספר</th>
+<th>יחידות</th>
+<th>תאריך</th>
+<th>תיאור</th>
+<th>מקור</th>
+<th>נמצא בסדרה</th>
+<th>הוסף לסדרה</th>
+</tr>
+   
+{% for scored_document in results %}
+    {% for field in scored_document.fields %}
+        {% if field.name == "series_type" %}
+        <tr>
+            {% for field in scored_document.fields %}
+                <td>
+                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+            {% for expression in scored_document.expressions %}
+                <td>
+                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+        </tr>
+        {% elif loop.last %}
+        <tr>
+            {% for field in scored_document.fields %}
+                <td>
+                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+            {% for expression in scored_document.expressions %}
+                <td>
+                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
+                </td>
+            {% endfor %}
+        {% endif %}    
+        </tr>
+    {% endfor %}        
+{% endfor %}
+</table>
 
 </div>
 </body>

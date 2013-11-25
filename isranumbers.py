@@ -56,8 +56,8 @@ class MainPage(webapp2.RequestHandler):
       search_phrase=""
     #need to check if the scoredDocunemt istances are set to hebrew automatically
     #and also if the different fields can be in different language
-    expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
-    sort_opts = search.SortOptions(expressions=expr_list)
+    #expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
+    sort_opts = search.SortOptions()
     search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
                                                   returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type'],
                                                   snippeted_fields=['description','source'])
@@ -269,20 +269,44 @@ class InsertSeries(webapp2.RequestHandler):
     self.response.out.write(template.render())
   def post(self):
     logging.info("posting")
-    add_to_series_index(get_author(),
-                        self.request.get('description'),
-                        self.request.get('labels'),
-			self.request.get('series_type'))
-    self.redirect('/')
+    series_id = add_to_series_index(get_author(),
+                                    self.request.get('description'),
+                                    self.request.get('labels'),
+			                        self.request.get('series_type'))
+    self.redirect('/addnumbertoseries?series_id=%s' %series_id)
 
 
 class AddNumberToSeries(webapp2.RequestHandler):
   def get(self): 
-    if self.request.get('number_to_add_id'):
-        number_to_add_id = self.request.get('number_to_add_id')
-    else :
-        number_to_add_id = ""    
-    template_values = {'number_to_add_id' : number_to_add_id}
+    if self.request.get('search_phrase'):
+      search_phrase=self.request.get('search_phrase')
+    else:
+      search_phrase=""
+    series_id = self.request.get('series_id')
+    series = search.Index(name=_INDEX_NAME).get(series_id)
+    for field in series.fields:
+        if field.name == "description" :
+            description = field.value
+        if field.name == "labels":    
+            labels = field.value
+        if field.name == "series_type" :
+            series_type = field.value
+
+
+    sort_opts = search.SortOptions()
+    search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
+                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
+                                                  snippeted_fields=['description','source'])
+
+    search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+    results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+
+    template_values = {'series_id' : series_id , 
+                       'description' : description ,
+                       'labels' : labels , 
+                       'series_type' : series_type , 
+                       'search_phrase' : search_phrase ,
+                       'results' : results}
     template = jinja_environment.get_template('add_number_to_series.html')
     self.response.out.write(template.render(template_values))
   def post(self):
@@ -298,8 +322,8 @@ def add_to_series_index(author,description,labels,series_type):
             search.TextField(name='labels', value=labels),
 	    search.TextField(name='series_type',value=series_type)]))
   logging.info("put result is")
-  logging.info(putresult)
-  return putresult
+  logging.info(putresult[0].id)
+  return putresult[0].id
 
 def add_number_to_series(number_id,series_id):
   logging.info(series_id)
@@ -328,8 +352,8 @@ class DisplaySeries(webapp2.RequestHandler):
     def get(self):
       series_id_to_display = self.request.get('series_id_to_display')
       series_to_display = search.Index(_INDEX_NAME).get(series_id_to_display)
-      self.display_series(series_to_display)
-    def display_series(self, series_to_display):
+      self.display_series(series_to_display, series_id_to_display)
+    def display_series(self, series_to_display, series_id_to_display):
         for field in series_to_display.fields:
             if field.name == u'list_of_number_ids':
                 number_ids_in_series=field.value.split()
@@ -369,7 +393,8 @@ class DisplaySeries(webapp2.RequestHandler):
                             'list_of_numbers' : sorted_list_of_numbers,
                             'series_description' : series_description,
                             'units' : units,
-		            	    'series_type' : series_type}
+		            	    'series_type' : series_type,
+                            'series_id_to_display' : series_id_to_display}
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.

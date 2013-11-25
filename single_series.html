@@ -44,6 +44,14 @@
         <p>
     {% endfor %}
     </div>
+
+    <div>
+    <form action="/addnumbertoseries">
+        <input type="hidden" name="series_id" value="{{series_id_to_display}}">
+        <input type="submit" value="הוסף מספרים לסדרה">
+    </form>
+    </div>
+
     <table style="width:100%;">
         <tr>
             <td>
