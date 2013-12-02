@@ -40,6 +40,7 @@
   <input type="submit" value="בצע חיפוש">
 </form>
 
+<form>
 
 <table border="2">
 <tr>
@@ -55,18 +56,6 @@
 {% for scored_document in results %}
     {% for field in scored_document.fields %}
         {% if field.name == "series_type" %}
-        <tr>
-            {% for field in scored_document.fields %}
-                <td>
-                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
-                </td>
-            {% endfor %}
-            {% for expression in scored_document.expressions %}
-                <td>
-                <a href = "/displayseries?series_id_to_display={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
-                </td>
-            {% endfor %}
-        </tr>
         {% elif loop.last %}
         <tr>
             {% for field in scored_document.fields %}
@@ -79,11 +68,16 @@
                 <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
                 </td>
             {% endfor %}
+            <td>
+            <input type="checkbox" name="numbers_in_series" value="{{scored_document.doc_id }}">
+            </td>
         {% endif %}    
-        </tr>
     {% endfor %}        
+    </tr>
 {% endfor %}
 </table>
+<input type="submit" value="עדכן סדרה">
+</form>
 
 </div>
 </body>

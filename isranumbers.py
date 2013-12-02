@@ -127,10 +127,10 @@ class SeriesXmlWorker(webapp2.RequestHandler):
 	source=child.attrib['source']
         logging.info(description)
 	data_fields=[search.TextField(name='author', value=author),
-            search.TextField(name='description', value=description),
-            search.TextField(name='labels', value=labels),
-	    search.TextField(name='series_type',value=series_type)]
-        series_id=search.Index(name=_INDEX_NAME).put(search.Document(
+        search.TextField(name='description', value=description),
+        search.TextField(name='labels', value=labels),
+        search.TextField(name='series_type',value=series_type)]
+    series_id=search.Index(name=_INDEX_NAME).put(search.Document(
     	    fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
 	logging.info(series_id)
 	for number in child:
@@ -139,13 +139,13 @@ class SeriesXmlWorker(webapp2.RequestHandler):
 	    month='-1'
 	    day='-1'
 	    time=number.attrib['time_period']
-            if time.find('-') != -1:
-                year = time.split('-')[0]
-                month = time.split('-')[1]
+        if time.find('-') != -1:
+            year = time.split('-')[0]
+            month = time.split('-')[1]
 		if len(time.split('-'))==3:
 		    day = time.split('-')[2] 
    	    else:
-		year=time
+            year=time
 	    number_id=search.Index(name=_INDEX_NAME).put(search.Document(
     	      fields=[search.TextField(name='author', value=author),
               search.NumberField(name='number', value=value),
@@ -156,14 +156,11 @@ class SeriesXmlWorker(webapp2.RequestHandler):
               search.NumberField(name='year_of_number', value=int(year)),
               search.NumberField(name='month_of_number', value=int(month)),
               search.NumberField(name='day_of_number', value=int(day)),
-	      search.TextField(name='contained_in_series', value=series_id)]))[0].id
-            list_of_number_ids+=u" " + number_id
-  	    search.Index(name=_INDEX_NAME).put(search.Document(fields=data_fields, doc_id = series_id))
-        search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
+              search.TextField(name='contained_in_series', value=series_id)]))[0].id
+        list_of_number_ids+=u" " + number_id
+    search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
     	    fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
-   #we stopped here     
-    
 
 class CsvWorker(webapp2.RequestHandler):
   def post(self):
@@ -351,9 +348,9 @@ def add_number_to_series(number_id,series_id):
 class DisplaySeries(webapp2.RequestHandler):
     def get(self):
       series_id_to_display = self.request.get('series_id_to_display')
-      series_to_display = search.Index(_INDEX_NAME).get(series_id_to_display)
-      self.display_series(series_to_display, series_id_to_display)
-    def display_series(self, series_to_display, series_id_to_display):
+      self.display_series(series_id_to_display)
+    def display_series(self, series_id_to_display):
+        series_to_display = search.Index(_INDEX_NAME).get(series_id_to_display)
         for field in series_to_display.fields:
             if field.name == u'list_of_number_ids':
                 number_ids_in_series=field.value.split()
@@ -399,6 +396,14 @@ class DisplaySeries(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
 # ToDo: automatically create time series for LAMAS data.
+
+def document_to_dictionary(document):
+    document_dictionary = {doc_id : document.doc_id}
+    for field in document.fields:
+        document_dictionary[field.name] = field.value
+    for expression in document.expressions:
+        document_dictionary[expression.name]=expression.value
+    return document_dictionary    
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
