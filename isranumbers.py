@@ -112,7 +112,6 @@ class UploadSeriesXml(blobstore_handlers.BlobstoreUploadHandler):
 
 class SeriesXmlWorker(webapp2.RequestHandler):
   def post(self):
-    logging.info("worker called")
     file_info = blobstore.BlobInfo(blobstore.BlobKey(self.request.get('key_str')))
     reader = blobstore.BlobReader(file_info)
     tree = ET.parse(reader)
@@ -122,44 +121,42 @@ class SeriesXmlWorker(webapp2.RequestHandler):
         list_of_number_ids=u''
         description=child.attrib['description']
         labels=child.attrib['labels']
-	series_type=child.attrib['series_type']
+        series_type=child.attrib['series_type']
         units=child.attrib['unit']
-	source=child.attrib['source']
-        logging.info(description)
-	data_fields=[search.TextField(name='author', value=author),
-        search.TextField(name='description', value=description),
-        search.TextField(name='labels', value=labels),
-        search.TextField(name='series_type',value=series_type)]
-    series_id=search.Index(name=_INDEX_NAME).put(search.Document(
-    	    fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
-	logging.info(series_id)
-	for number in child:
-	    value=float(number.attrib['value'])
-	    year='-1'
-	    month='-1'
-	    day='-1'
-	    time=number.attrib['time_period']
-        if time.find('-') != -1:
-            year = time.split('-')[0]
-            month = time.split('-')[1]
-		if len(time.split('-'))==3:
-		    day = time.split('-')[2] 
-   	    else:
-            year=time
-	    number_id=search.Index(name=_INDEX_NAME).put(search.Document(
-    	      fields=[search.TextField(name='author', value=author),
-              search.NumberField(name='number', value=value),
-              search.TextField(name='units', value=units),
-              search.TextField(name='description', value=description),
-              search.TextField(name='labels', value=labels),
-              search.TextField(name='source', value=source),
-              search.NumberField(name='year_of_number', value=int(year)),
-              search.NumberField(name='month_of_number', value=int(month)),
-              search.NumberField(name='day_of_number', value=int(day)),
-              search.TextField(name='contained_in_series', value=series_id)]))[0].id
-        list_of_number_ids+=u" " + number_id
-    search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
-    	    fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
+        source=child.attrib['source']
+        data_fields=[search.TextField(name='author', value=author),
+            search.TextField(name='description', value=description),
+            search.TextField(name='labels', value=labels),
+            search.TextField(name='series_type',value=series_type)]
+        series_id=search.Index(name=_INDEX_NAME).put(search.Document(
+            fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
+        for number in child:
+            value=float(number.attrib['value'])
+            year='-1'
+            month='-1'
+            day='-1'
+            time=number.attrib['time_period']
+            if time.find('-') != -1:
+                year = time.split('-')[0]
+                month = time.split('-')[1]
+                if len(time.split('-'))==3:
+                    day = time.split('-')[2]
+            else:
+                year=time
+            number_id=search.Index(name=_INDEX_NAME).put(search.Document(
+                fields=[search.TextField(name='author', value=author),
+                search.NumberField(name='number', value=value),
+                search.TextField(name='units', value=units),
+                search.TextField(name='description', value=description),
+                search.TextField(name='labels', value=labels),
+                search.TextField(name='source', value=source),
+                search.NumberField(name='year_of_number', value=int(year)),
+                search.NumberField(name='month_of_number', value=int(month)),
+                search.NumberField(name='day_of_number', value=int(day)),
+                search.TextField(name='contained_in_series', value=series_id)]))[0].id
+            list_of_number_ids+=u" " + number_id
+        search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
+            fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
 
 class CsvWorker(webapp2.RequestHandler):
@@ -307,9 +304,10 @@ class AddNumberToSeries(webapp2.RequestHandler):
     template = jinja_environment.get_template('add_number_to_series.html')
     self.response.out.write(template.render(template_values))
   def post(self):
-    add_number_to_series(unicode(self.request.get('number_id')),
-                         unicode(self.request.get('series_id')))
-    self.redirect('/')
+#       add_number_to_series(unicode(self.request.get('number_id')),
+#                         unicode(self.request.get('series_id')))
+        add_numbers_to_series(self.request.get('series_id'),self.request.get_all('numbers_in_series'))
+        self.redirect('/')
 
 def add_to_series_index(author,description,labels,series_type):
   putresult=search.Index(name=_INDEX_NAME).put(search.Document(
@@ -354,12 +352,11 @@ class DisplaySeries(webapp2.RequestHandler):
         for field in series_to_display.fields:
             if field.name == u'list_of_number_ids':
                 number_ids_in_series=field.value.split()
-
             if field.name == u'description':
                 series_description=field.value
             if field.name == u'series_type':
-		series_type=field.value
-	list_of_numbers=[]
+                series_type=field.value
+        list_of_numbers=[]
         for number_id in number_ids_in_series:
             num = None
             year = None
@@ -371,13 +368,13 @@ class DisplaySeries(webapp2.RequestHandler):
                 if field.name==u'year_of_number':
                     year = int(field.value)
                 if field.name==u'month_of_number':
-		    month=int(field.value)
-		    if field.value==-1:
-		        month=1
+                    month=int(field.value)
+                    if field.value==-1:
+                        month=1
                 if field.name==u'day_of_number':
                     day=int(field.value)
-		    if field.value==-1:
-		        day=1
+                    if field.value==-1:
+                        day=1
                 if field.name==u'units':
                     units=field.value
             list_of_numbers.append({'number' : num,
@@ -395,7 +392,6 @@ class DisplaySeries(webapp2.RequestHandler):
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
-# ToDo: automatically create time series for LAMAS data.
 
 def document_to_dictionary(document):
     document_dictionary = {doc_id : document.doc_id}
@@ -404,6 +400,29 @@ def document_to_dictionary(document):
     for expression in document.expressions:
         document_dictionary[expression.name]=expression.value
     return document_dictionary    
+
+def add_numbers_to_series(series_id,numbers_list_of_ids):
+    string_of_number_ids=u''
+    series = search.Index(name=_INDEX_NAME).get(series_id)
+    for number_id in numbers_list_of_ids:
+        string_of_number_ids+=u' ' + number_id
+#should we check if number_id already exists in list_of_number_ids?        
+        number = search.Index(_INDEX_NAME).get(number_id)
+        updated_fields = []
+        for field in number.fields:
+            if field.name != u"contained_in_series":
+                updated_fields.append(field)
+            else:
+                updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + series_id))
+#should we need to take care of a case where "contained_in_series" field does not exist in number?
+        search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
+    updated_fields = []
+    for field in series.fields:
+        if field.name != u'list_of_number_ids':
+            updated_fields.append(field)
+        else:
+            updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + string_of_number_ids))
+    search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
