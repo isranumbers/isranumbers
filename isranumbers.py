@@ -356,37 +356,29 @@ class DisplaySeries(webapp2.RequestHandler):
                 series_description=field.value
             if field.name == u'series_type':
                 series_type=field.value
+# ToDo we stopped here 12/12/2013, we need to get the criteria name from the series labels
         list_of_numbers=[]
         for number_id in number_ids_in_series:
-            num = None
-            year = None
-            month = None
-            day = None
-            for field in search.Index(_INDEX_NAME).get(number_id).fields:
-                if field.name==u'number':
-                    num = field.value
-                if field.name==u'year_of_number':
-                    year = int(field.value)
-                if field.name==u'month_of_number':
-                    month=int(field.value)
-                    if field.value==-1:
-                        month=1
-                if field.name==u'day_of_number':
-                    day=int(field.value)
-                    if field.value==-1:
-                        day=1
-                if field.name==u'units':
-                    units=field.value
-            list_of_numbers.append({'number' : num,
-                                    'year' : year,
-                                    'month' : month,
-                                    'day' : day})
-        sorted_list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
-        
+            num_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(number_id))
+            if series_type == "time series":
+                list_of_numbers.append({'number' : num_dictionary[u'number'],
+                                        'year' : int(num_dictionary[u'year_of_number']),
+                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
+                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
+            if series_type == "pie series":
+                labels = num_dictionary[u'labels'].split()
+                criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
+                list_of_numbers.append({'number' : num_dictionary[u'number'],
+                                        'criteria_value' : criteria_value})
+
+        if series_type == "time series":
+            list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
+        if series_type == "pie series":
+            list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
         template_values = {'series_to_display' : series_to_display,
-                            'list_of_numbers' : sorted_list_of_numbers,
+                            'list_of_numbers' : list_of_numbers,
                             'series_description' : series_description,
-                            'units' : units,
+                            'units' : num_dictionary[u'units'],
 		            	    'series_type' : series_type,
                             'series_id_to_display' : series_id_to_display}
         template = jinja_environment.get_template('single_series.html')
@@ -394,11 +386,12 @@ class DisplaySeries(webapp2.RequestHandler):
         # ToDo: add links to numbers.
 
 def document_to_dictionary(document):
-    document_dictionary = {doc_id : document.doc_id}
+    document_dictionary = {u'doc_id' : document.doc_id}
     for field in document.fields:
         document_dictionary[field.name] = field.value
-    for expression in document.expressions:
-        document_dictionary[expression.name]=expression.value
+    if hasattr(document,'expressions'):
+        for expression in document.expressions:
+            document_dictionary[expression.name]=expression.value
     return document_dictionary    
 
 def add_numbers_to_series(series_id,numbers_list_of_ids):
