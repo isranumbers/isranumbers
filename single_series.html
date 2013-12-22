@@ -11,7 +11,6 @@
     google.load("visualization", "1", {packages:["annotatedtimeline","corechart"]});
     google.setOnLoadCallback(drawChart);
     function drawChart() {
-          
     if ("{{series_type}}" == "time series")
         {
         var data = new google.visualization.DataTable();
@@ -33,16 +32,16 @@
         {
         if ("{{series_type}}" == "pie series")
             {
-            var data = google.visualization.arrayToDataTable([
-                ['Task', 'Hours per Day'],
-                ['Work',     11],
-                ['Eat',      2],
-                ['Commute',  2],
-                ['Watch TV', 2],
-                ['Sleep',    7]
-            ]);
+            var data = new google.visualization.DataTable();
+            data.addColumn('string','{{criteria}}');    
+            data.addColumn('number','{{units}}');    
+            data.addRows([
+	            {% for number in list_of_numbers %}
+                ['{{number['criteria_value']}}', {{number['number']}}],
+                {% endfor %} 
+                ]);
             var options = {
-            title: 'My Daily Activities'
+            title: 'Distribution by {{criteria}}'
             };
 
             var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
@@ -60,12 +59,10 @@
 {%include "content_hebrew.html" %}
 
     <div>
-    {% for field in series_to_display.fields %}
-        {% if field.name != "list_of_number_ids" %}
-            {{field.name}} : {{field.value}}
-        {% endif %}    
-        <p>
-    {% endfor %}
+    description : {{series_to_display_dictionary['description']}}<p>
+    series type : {{series_to_display_dictionary['series_type']}}<p>
+    labels : {{series_to_display_dictionary['labels']}}<p>
+    author : {{series_to_display_dictionary['author']}}<p>
     </div>
 
     <div>
@@ -84,12 +81,23 @@
                 <div style="height:500px;overflow:auto;">
                     <table border="1">
                     <tr>
-                    <td> year </td> <td> {{ units }} </td>
+                    <td>
+                    {% if series_type == "time series" %}
+                        year 
+                    {% elif series_type == "pie series" %}
+                        {{criteria}}
+                    {% endif %}
+                    </td>
+                    <td> {{ units }} </td>
                     </tr>
                     {% for full_number_data in list_of_numbers %}
                         <tr>
                         <td>
-                        {{full_number_data['year']}}
+                        {% if series_type == "time series" %}
+                            {{full_number_data['year']}}
+                        {% elif series_type == "pie series" %}
+                            {{full_number_data['criteria_value']}}
+                        {% endif %}
                         </td>
                         <td>
                         {{full_number_data['number']}}

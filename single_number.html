@@ -15,7 +15,7 @@
 <div>
 {% for field in number_to_display.fields %}
     {% if field.name == "contained_in_series" %}
-        {{field.name}} : {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a>
+        {{field.name}} : {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a><p>
         {% endfor %}
     {% else %}
         {{field.name}} : {{field.value}}

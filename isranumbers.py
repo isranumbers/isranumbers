@@ -269,7 +269,7 @@ class InsertSeries(webapp2.RequestHandler):
 			                        self.request.get('series_type'))
     self.redirect('/addnumbertoseries?series_id=%s' %series_id)
 
-
+# we should change the optiones to get to this class. on 22.12.2013 the option to get to the handler from the display series page is fine but it can't be accessed from the tool bar. one option is to cancel the option to get to the handler from the tool bar. another option is to deal with the case of directing to this handler without series id by opening a search for series , then select the series we want and than display it in the proper way
 class AddNumberToSeries(webapp2.RequestHandler):
   def get(self): 
     if self.request.get('search_phrase'):
@@ -348,14 +348,16 @@ class DisplaySeries(webapp2.RequestHandler):
       series_id_to_display = self.request.get('series_id_to_display')
       self.display_series(series_id_to_display)
     def display_series(self, series_id_to_display):
-        series_to_display = search.Index(_INDEX_NAME).get(series_id_to_display)
-        for field in series_to_display.fields:
-            if field.name == u'list_of_number_ids':
-                number_ids_in_series=field.value.split()
-            if field.name == u'description':
-                series_description=field.value
-            if field.name == u'series_type':
-                series_type=field.value
+        series_to_display_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id_to_display))
+        number_ids_in_series=series_to_display_dictionary[u'list_of_number_ids'].split()
+        series_description=series_to_display_dictionary[u'description']
+        series_type=series_to_display_dictionary[u'series_type']
+        series_labels=series_to_display_dictionary[u'labels'].split()
+        criteria_name = ''
+        if series_type == "pie series":
+            criteria_name=next(label.replace(u'criteria:', u'' , 1) for label in series_labels if label.startswith(u'criteria:'))
+
+
 # ToDo we stopped here 12/12/2013, we need to get the criteria name from the series labels
         list_of_numbers=[]
         for number_id in number_ids_in_series:
@@ -369,18 +371,25 @@ class DisplaySeries(webapp2.RequestHandler):
                 labels = num_dictionary[u'labels'].split()
                 criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
                 list_of_numbers.append({'number' : num_dictionary[u'number'],
-                                        'criteria_value' : criteria_value})
-
+                                        'criteria_value' : criteria_value ,
+#the next lines ar added to prevent bug of mising date data in the javascript code - maybe there is a better way to deal with that bug such as catching exception
+                                        'year' : int(num_dictionary[u'year_of_number']),
+                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
+                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
+#end of the addition to solve the javascript bug 
         if series_type == "time series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
         if series_type == "pie series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
-        template_values = {'series_to_display' : series_to_display,
+        template_values =  {'series_to_display_dictionary' : series_to_display_dictionary,
                             'list_of_numbers' : list_of_numbers,
                             'series_description' : series_description,
+#if te series is empty (without numbers) it can't be displayed since there is no default value to "num_dictionary[u'units']" - consider adding default value so also empty sries could be displayed (i think it make some sense that numbers will be added to the data base and then to the series by the user only after he created the series. alternativly we can consider not to let an empty series to be created - and only allow the series to be created after at list one number is added.
                             'units' : num_dictionary[u'units'],
 		            	    'series_type' : series_type,
-                            'series_id_to_display' : series_id_to_display}
+                            'series_id_to_display' : series_id_to_display,
+                            'criteria' : criteria_name}
+        #deside wether to pass to jinja all the series dictionary or just the relevant data
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
