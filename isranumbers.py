@@ -24,6 +24,19 @@ jinja_environment = jinja2.Environment(
 
 _INDEX_NAME = 'data_index'
 
+class ValidateRequestHandler(webapp2.RequestHandler):
+    def validate(self, permission):
+        user = users.get_current_user()
+        if not user:
+            self.redirect(users.create_login_url(self.request.uri))
+        q = UsersList.all()
+        q.filter("email =" , user.email())
+        q.filter("permission =" , permission)
+        for p in q.run():
+            return
+        self.redirect('/registerform')
+
+
 class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
   units, and description."""
@@ -426,6 +439,73 @@ def add_numbers_to_series(series_id,numbers_list_of_ids):
             updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + string_of_number_ids))
     search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
 
+class UsersList(db.Model):
+  """Models an individual User and its authentications."""
+  nickname = db.StringProperty(multiline = True)
+  email = db.EmailProperty()
+  permission = db.StringProperty()
+  active_since = db.DateTimeProperty(auto_now_add=True)
+ 
+# when surfing to a restricted page:
+# the Handler should:
+# 1. get the current user email (if it doesnt exist - redirect to login page).
+# 2. find the relevant user in the database. if it doesn't exist - redirect to a page saying the user doesn't have privileges and letting him submit a form asking for preveleges.
+# 3. proceed with the page.
+
+class AuthenticationManagement(webapp2.RequestHandler):
+    def get(self):
+        template = jinja_environment.get_template('authentication_management.html')
+        self.response.out.write(template.render())
+
+#this class will be available only for the admin using the appengine built in admin validation for the link
+
+class RegisterUser(webapp2.RequestHandler):
+    def get(self):
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = {'users' : users}
+        template = jinja_environment.get_template('register_user.html')
+        self.response.out.write(template.render(template_values))
+    def post(self):
+        user = UsersList(email=self.request.get("email"))
+        q = UsersList.all()
+        q.filter("email =" , self.request.get("email"))
+        for p in q.run():
+            user = p
+        user.permission=self.request.get("permission")
+        user.nickname=self.request.get("nickname")
+        user.put()
+        self.redirect('/authenticationmanagement/displayuserslist')
+
+class UnregisterUser(webapp2.RequestHandler):
+    def get(self):
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = {'users' : users}
+        template = jinja_environment.get_template('unregister_user.html')
+        self.response.out.write(template.render(template_values))
+    def post(self):
+        q = UsersList.all()
+        q.filter("nickname =" , self.request.get("nickname"))
+        for p in q.run():
+            p.delete()
+        self.redirect('/authenticationmanagement/displayuserslist')
+
+#avilable only to admin
+class DisplayUsersList(webapp2.RequestHandler):
+    def get(self):
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = {'users' : users}
+        template = jinja_environment.get_template('display_users_list.html')
+        self.response.out.write(template.render(template_values))
+
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
                                ('/upload', UploadCsv),
@@ -436,6 +516,10 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/singlenum', SingleNumber),
                                ('/insertseries', InsertSeries),
                                ('/addnumbertoseries', AddNumberToSeries),
-                               ('/displayseries', DisplaySeries)],
+                               ('/displayseries', DisplaySeries),
+                               ('/authenticationmanagement', AuthenticationManagement),
+                               ('/authenticationmanagement/registeruser',RegisterUser),
+                               ('/authenticationmanagement/unregisteruser',UnregisterUser),
+                               ('/authenticationmanagement/displayuserslist',DisplayUsersList)],
                               debug=True)
 

@@ -1,0 +1,35 @@
+<html lang="he">
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+
+<body>
+<div dir="rtl">
+
+{%include "content_hebrew.html" %}
+
+{% if users %}
+    <table border="2"> 
+        <tr>
+        <th>שם המשתמש</th>
+        <th>רמת ההרשאה</th>
+        <th>תאריך הצטרפות</th>
+        </tr>
+        {% for user in users%}
+        <tr>
+        <td>{{user.nickname}}</td>
+        <td>{{user.permission}}</td>
+        <td>{{user.active_since}}</td>
+        </tr>
+        {% endfor %}
+    </table>     
+{% else %}
+    <p>אין משתמשים מורשים באתר</p>
+{% endif %}
+</div>
+</body>
+</html>

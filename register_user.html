@@ -1,0 +1,57 @@
+<html lang="he">
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+
+<body>
+<div dir="rtl">
+
+{%include "content_hebrew.html" %}
+
+{% if users %}
+    <table border="2"> 
+        <tr>
+        <th>שם המשתמש</th>
+        <th>רמת ההרשאה</th>
+        <th>תאריך הצטרפות</th>
+        </tr>
+        {% for user in users%}
+            <tr>
+            <td>{{user.nickname}}</td>
+            <td>{{user.permission}}</td>
+            <td>{{user.active_since}}</td>
+            </tr>
+        {% endfor %}
+    </table>     
+
+{% else %}
+    <p>אין משתמשים מורשים באתר</p>
+{% endif %}
+
+<form action="/authenticationmanagement/registeruser" method="post">
+    <br>
+    <table>
+    <tr>
+    <td id="InsertData">שם משתמש:</td><td> <textarea name="nickname" cols="20"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">דואר אלקטרוני:</td><td> <textarea name="email" cols="20"></textarea></td>
+    </tr>
+    <tr>
+    <td id="InsertData">רמת הרשאה:</td>
+    <td>
+    <input type="radio" name="permission" value="admin" checked>מנהל<br>
+    <input type="radio" name="permission" value="editor" checked>עורך<br>
+    <input type="radio" name="permission" value="user">משתמש רגיל
+    </td>
+    </tr>
+    </table>     
+    <div><input type="submit" value="הוסף משתמש/שנה הרשאה"></div>
+</form>
+</div>
+</body>
+</html>
