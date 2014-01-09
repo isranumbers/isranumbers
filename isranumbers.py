@@ -458,7 +458,7 @@ class AuthenticationManagement(webapp2.RequestHandler):
         self.response.out.write(template.render())
 
 #this class will be available only for the admin using the appengine built in admin validation for the link
-
+#we should add a check so there will be no case for 2 users with same nickname
 class RegisterUser(webapp2.RequestHandler):
     def get(self):
         q=UsersList.all()
