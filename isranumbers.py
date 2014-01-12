@@ -407,6 +407,31 @@ class DisplaySeries(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
 
+#new function from january 13 - want to use that for the display single numdber html page
+def change_titles_to_hebrew(fields_hebrew):
+    for field if fields_hebrew:
+        if field.name == 'author':
+            field.name = 'המזין'
+        if field.name == number: 
+            field.name = 'המספר'
+        if field.name ==units:
+            field.name = 'יחידות'
+        if field.name ==description:
+            field.name = 'תיאור המספר'
+        if field.name ==lables:
+            field.name = 'תגיות'
+        if field.name ==source:
+            field.name = 'המקור'
+        if field.name ==year_of_number:
+            field.name = 'שנת הנתון'
+        if field.name ==month_of_number:
+            field.name = 'חודש הנתון'
+        if field.name ==day_of_number:
+            field.name = 'יום הנתון'
+        if field.name ==contained_in_series:
+            field.name = 'נמצא בסדרות'
+    return fields_hebrew
+
 def document_to_dictionary(document):
     document_dictionary = {u'doc_id' : document.doc_id}
     for field in document.fields:
@@ -415,6 +440,20 @@ def document_to_dictionary(document):
         for expression in document.expressions:
             document_dictionary[expression.name]=expression.value
     return document_dictionary    
+
+#new function written on january 13 - need to debug before usage - intended to simplify and shorten the code
+#fields to change is a dictionary of field names we want to change in the document and their new values 
+def change_document_fields(document,fields_to_change):
+    fields_to_change_names = []
+    for field_name_to_change in fields_to_change:
+        fields_to_change_names.append(field_name_to_change)
+    updeted_fields=[]
+    for field in document.fields:
+        if field.name in fields_to_change_names:
+            updated_fields.append(search.TextField(name=field.name, value=fields_to_change[field.name]))
+        else:
+            updated_fields.append(field)
+    search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = document.doc_id))
 
 def add_numbers_to_series(series_id,numbers_list_of_ids):
     string_of_number_ids=u''
