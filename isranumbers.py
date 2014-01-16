@@ -407,30 +407,6 @@ class DisplaySeries(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
 
-#new function from january 13 - want to use that for the display single numdber html page
-def change_titles_to_hebrew(fields_hebrew):
-    for field if fields_hebrew:
-        if field.name == 'author':
-            field.name = 'המזין'
-        if field.name == number: 
-            field.name = 'המספר'
-        if field.name ==units:
-            field.name = 'יחידות'
-        if field.name ==description:
-            field.name = 'תיאור המספר'
-        if field.name ==lables:
-            field.name = 'תגיות'
-        if field.name ==source:
-            field.name = 'המקור'
-        if field.name ==year_of_number:
-            field.name = 'שנת הנתון'
-        if field.name ==month_of_number:
-            field.name = 'חודש הנתון'
-        if field.name ==day_of_number:
-            field.name = 'יום הנתון'
-        if field.name ==contained_in_series:
-            field.name = 'נמצא בסדרות'
-    return fields_hebrew
 
 def document_to_dictionary(document):
     document_dictionary = {u'doc_id' : document.doc_id}

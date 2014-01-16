@@ -8,6 +8,14 @@ handlers:
 - url: /stylesheets
   static_dir: stylesheets
 
+- url: /authenticationmanagement
+  script: isranumbers.app
+  login: admin
+
+- url: /authenticationmanagement/.*
+  script: isranumbers.app
+  login: admin
+
 - url: /.*
   script: isranumbers.app
 
