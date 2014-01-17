@@ -27,14 +27,19 @@ _INDEX_NAME = 'data_index'
 class ValidateRequestHandler(webapp2.RequestHandler):
     def validate(self, permission):
         user = users.get_current_user()
+        logging.info("validate called")
+        logging.info(user)
+        url = users.create_login_url(self.request.uri)
+        logging.info(url)
         if not user:
             self.redirect(users.create_login_url(self.request.uri))
-        q = UsersList.all()
-        q.filter("email =" , user.email())
-        q.filter("permission =" , permission)
-        for p in q.run():
-            return
-        self.redirect('/registerform')
+        else:
+            q = UsersList.all()
+            q.filter("email =" , user.email())
+            q.filter("permission =" , permission)
+            for p in q.run():
+                return
+            self.redirect('/registrationform')
 
 
 class IsraNumber(db.Model):
@@ -469,18 +474,36 @@ class UsersList(db.Model):
 
 class AuthenticationManagement(webapp2.RequestHandler):
     def get(self):
-        template = jinja_environment.get_template('authentication_management.html')
+        template = jinja_environment.get_template('authentication.html')
         self.response.out.write(template.render())
+
+class AdminManagementPage(webapp2.RequestHandler):
+    def get(self):
+        template_values = { 'register_url' : '/authenticationmanagement/admin/registeruser',
+                            'unregister_url' : '/authenticationmanagement/admin/unregisteruser',
+                            'display_url' : '/authenticationmanagement/admin/displayuserslist'}
+        template = jinja_environment.get_template('authentication_management.html')
+        self.response.out.write(template.render(template_values))
+
+class EditorsManagementPage(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        template_values = { 'register_url' : '/authenticationmanagement/editors/registeruser',
+                            'unregister_url' : '/authenticationmanagement/editors/unregisteruser',
+                            'display_url' : '/authenticationmanagement/editors/displayuserslist'}
+        template = jinja_environment.get_template('authentication_management.html')
+        self.response.out.write(template.render(template_values))
 
 #this class will be available only for the admin using the appengine built in admin validation for the link
 #we should add a check so there will be no case for 2 users with same nickname
-class RegisterUser(webapp2.RequestHandler):
+class AdminRegisterUser(webapp2.RequestHandler):
     def get(self):
         q=UsersList.all()
         users = []
         for user in q.run():
             users.append(user)
-        template_values = {'users' : users}
+        template_values = { 'users' : users ,
+                            'register_url' : '/authenticationmanagement/admin/registeruser'}
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -492,15 +515,16 @@ class RegisterUser(webapp2.RequestHandler):
         user.permission=self.request.get("permission")
         user.nickname=self.request.get("nickname")
         user.put()
-        self.redirect('/authenticationmanagement/displayuserslist')
+        self.redirect('/authenticationmanagement/admin/displayuserslist')
 
-class UnregisterUser(webapp2.RequestHandler):
+class AdminUnregisterUser(webapp2.RequestHandler):
     def get(self):
         q=UsersList.all()
         users = []
         for user in q.run():
             users.append(user)
-        template_values = {'users' : users}
+        template_values = { 'users' : users ,
+                            'unregister_url' : '/authenticationmanagement/admin/unregisteruser'}
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -508,10 +532,10 @@ class UnregisterUser(webapp2.RequestHandler):
         q.filter("nickname =" , self.request.get("nickname"))
         for p in q.run():
             p.delete()
-        self.redirect('/authenticationmanagement/displayuserslist')
+        self.redirect('/authenticationmanagement/admin/displayuserslist')
 
 #avilable only to admin
-class DisplayUsersList(webapp2.RequestHandler):
+class AdminDisplayUsersList(webapp2.RequestHandler):
     def get(self):
         q=UsersList.all()
         users = []
@@ -520,6 +544,64 @@ class DisplayUsersList(webapp2.RequestHandler):
         template_values = {'users' : users}
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
+
+class EditorsRegisterUser(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = { 'users' : users ,
+                            'register_url' : '/authenticationmanagement/editors/registeruser'}
+        template = jinja_environment.get_template('register_user.html')
+        self.response.out.write(template.render(template_values))
+    def post(self):
+        self.validate('editor')
+        user = UsersList(email=self.request.get("email"))
+        q = UsersList.all()
+        q.filter("email =" , self.request.get("email"))
+        for p in q.run():
+            user = p
+        user.permission=self.request.get("permission")
+        user.nickname=self.request.get("nickname")
+        user.put()
+        self.redirect('/authenticationmanagement/editors/displayuserslist')
+
+class EditorsUnregisterUser(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = { 'users' : users ,
+                            'unregister_url' : '/authenticationmanagement/editors/unregisteruser'}
+        template = jinja_environment.get_template('unregister_user.html')
+        self.response.out.write(template.render(template_values))
+    def post(self):
+        self.validate('editor')
+        q = UsersList.all()
+        q.filter("nickname =" , self.request.get("nickname"))
+        for p in q.run():
+            p.delete()
+        self.redirect('/authenticationmanagement/editors/displayuserslist')
+
+class EditorsDisplayUsersList(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        q=UsersList.all()
+        users = []
+        for user in q.run():
+            users.append(user)
+        template_values = {'users' : users}
+        template = jinja_environment.get_template('display_users_list.html')
+        self.response.out.write(template.render(template_values))
+
+class RegistrationForm(webapp2.RequestHandler):
+    def get(self):
+        template = jinja_environment.get_template('registration_form.html')
+        self.response.out.write(template.render())
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
@@ -533,8 +615,14 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/addnumbertoseries', AddNumberToSeries),
                                ('/displayseries', DisplaySeries),
                                ('/authenticationmanagement', AuthenticationManagement),
-                               ('/authenticationmanagement/registeruser',RegisterUser),
-                               ('/authenticationmanagement/unregisteruser',UnregisterUser),
-                               ('/authenticationmanagement/displayuserslist',DisplayUsersList)],
+                               ('/authenticationmanagement/editors', EditorsManagementPage),
+                               ('/authenticationmanagement/editors/registeruser',EditorsRegisterUser),
+                               ('/authenticationmanagement/editors/unregisteruser',EditorsUnregisterUser),
+                               ('/authenticationmanagement/editors/displayuserslist',EditorsDisplayUsersList),
+                               ('/authenticationmanagement/admin', AdminManagementPage),
+                               ('/authenticationmanagement/admin/registeruser',AdminRegisterUser),
+                               ('/authenticationmanagement/admin/unregisteruser',AdminUnregisterUser),
+                               ('/authenticationmanagement/admin/displayuserslist',AdminDisplayUsersList),
+                               ('/registrationform',RegistrationForm)],
                               debug=True)
 

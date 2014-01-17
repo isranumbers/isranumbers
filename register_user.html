@@ -32,7 +32,7 @@
     <p>אין משתמשים מורשים באתר</p>
 {% endif %}
 
-<form action="/authenticationmanagement/registeruser" method="post">
+<form action="{{register_url}}" method="post">
     <br>
     <table>
     <tr>
@@ -44,7 +44,6 @@
     <tr>
     <td id="InsertData">רמת הרשאה:</td>
     <td>
-    <input type="radio" name="permission" value="admin" checked>מנהל<br>
     <input type="radio" name="permission" value="editor" checked>עורך<br>
     <input type="radio" name="permission" value="user">משתמש רגיל
     </td>
