@@ -102,6 +102,7 @@ class MainPage(webapp2.RequestHandler):
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
         
+#todo: create a class wuth validation option for the blobstore hanler like we did with the webapp2 request handler
 class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
   def get(self): 
     template_values = {
@@ -198,11 +199,13 @@ class CsvWorker(webapp2.RequestHandler):
     logging.info("worker finished")
 
 
-class InsertNumber(webapp2.RequestHandler):
+class InsertNumber(ValidateRequestHandler):
   def get(self): 
+    self.validate('editor')
     template = jinja_environment.get_template('insert_number.html')
     self.response.out.write(template.render())
   def post(self):
+    self.validate('editor')
     add_to_number_index(get_author(),
                         float(self.request.get('number')),
                         self.request.get('units'),
@@ -215,11 +218,13 @@ class InsertNumber(webapp2.RequestHandler):
               
     self.redirect('/')
     
-class DeleteNumber(webapp2.RequestHandler):
+class DeleteNumber(ValidateRequestHandler):
   def get(self):
+    self.validate('editor')
     template = jinja_environment.get_template('delete_numbers.html')
     self.response.out.write(template.render())
   def post(self):
+    self.validate('editor')
     documents_to_delete = int(self.request.get('documents_to_delete'))
     doc_index = search.Index(name=_INDEX_NAME)
     for i in range(0,documents_to_delete):    
@@ -274,13 +279,13 @@ def add_to_number_index(author,number,units,description,labels,source,year,month
   logging.info(dir(x[0]))
   logging.info(x)
     
-class InsertSeries(webapp2.RequestHandler):
+class InsertSeries(ValidateRequestHandler):
   def get(self): 
-    logging.info("getting")
+    self.validate('editor')
     template = jinja_environment.get_template('insert_series.html')
     self.response.out.write(template.render())
   def post(self):
-    logging.info("posting")
+    self.validate('editor')
     series_id = add_to_series_index(get_author(),
                                     self.request.get('description'),
                                     self.request.get('labels'),
@@ -288,8 +293,9 @@ class InsertSeries(webapp2.RequestHandler):
     self.redirect('/addnumbertoseries?series_id=%s' %series_id)
 
 # we should change the optiones to get to this class. on 22.12.2013 the option to get to the handler from the display series page is fine but it can't be accessed from the tool bar. one option is to cancel the option to get to the handler from the tool bar. another option is to deal with the case of directing to this handler without series id by opening a search for series , then select the series we want and than display it in the proper way
-class AddNumberToSeries(webapp2.RequestHandler):
+class AddNumberToSeries(ValidateRequestHandler):
   def get(self): 
+    self.validate('editor')
     if self.request.get('search_phrase'):
       search_phrase=self.request.get('search_phrase')
     else:
@@ -324,6 +330,7 @@ class AddNumberToSeries(webapp2.RequestHandler):
   def post(self):
 #       add_number_to_series(unicode(self.request.get('number_id')),
 #                         unicode(self.request.get('series_id')))
+        self.validate('editor')
         add_numbers_to_series(self.request.get('series_id'),self.request.get_all('numbers_in_series'))
         self.redirect('/')
 
@@ -474,8 +481,19 @@ class UsersList(db.Model):
 
 class AuthenticationManagement(webapp2.RequestHandler):
     def get(self):
+        if users.get_current_user():
+            url = users.create_logout_url(self.request.uri)
+            url_linktext = 'Logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_linktext = 'Login' 
+    
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext
+            }
         template = jinja_environment.get_template('authentication.html')
-        self.response.out.write(template.render())
+        self.response.out.write(template.render(template_values))
 
 class AdminManagementPage(webapp2.RequestHandler):
     def get(self):
