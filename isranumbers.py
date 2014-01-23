@@ -314,40 +314,61 @@ class InsertSeries(ValidateRequestHandler):
 
 # we should change the optiones to get to this class. on 22.12.2013 the option to get to the handler from the display series page is fine but it can't be accessed from the tool bar. one option is to cancel the option to get to the handler from the tool bar. another option is to deal with the case of directing to this handler without series id by opening a search for series , then select the series we want and than display it in the proper way
 class AddNumberToSeries(ValidateRequestHandler):
-  def get(self): 
-    self.validate('editor')
-    if self.request.get('search_phrase'):
-      search_phrase=self.request.get('search_phrase')
-    else:
-      search_phrase=""
-    series_id = self.request.get('series_id')
-    series = search.Index(name=_INDEX_NAME).get(series_id)
-    for field in series.fields:
-        if field.name == "description" :
-            description = field.value
-        if field.name == "labels":    
-            labels = field.value
-        if field.name == "series_type" :
-            series_type = field.value
+    def get(self): 
+        self.validate('editor')
+        if self.request.get('search_phrase'):
+            search_phrase=self.request.get('search_phrase')
+        else:
+            search_phrase=""
+# the following commands create the web page shown when AddNumberToSeries is called from the menu bar (without series id)
+        if not self.request.get('series_id'):
+# the following line should be changed for a better solution to get only results that are series amd not numbers
+            search_phrase+=" " + "series"
+            sort_opts = search.SortOptions()
+# we should consider adding source to the series data
+            search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
+                                                          returned_fields=['series_type'],
+                                                          snippeted_fields=['description','source'])
+
+            search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+            results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+
+            template_values = {
+                                'search_phrase': search_phrase,
+                                'results': results,
+            }
+            template = jinja_environment.get_template('choose_series.html')
+            self.response.out.write(template.render(template_values))
+# the following commands create the web page when AddNumberToSeries is called with series id
+        else:
+            series_id = self.request.get('series_id')
+            series = search.Index(name=_INDEX_NAME).get(series_id)
+            for field in series.fields:
+                if field.name == "description" :
+                    description = field.value
+                if field.name == "labels":    
+                    labels = field.value
+                if field.name == "series_type" :
+                    series_type = field.value
 
 
-    sort_opts = search.SortOptions()
-    search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
-                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
-                                                  snippeted_fields=['description','source'])
+            sort_opts = search.SortOptions()
+            search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
+                                                          returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
+                                                          snippeted_fields=['description','source'])
 
-    search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
-    results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+            search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+            results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
 
-    template_values = {'series_id' : series_id , 
-                       'description' : description ,
-                       'labels' : labels , 
-                       'series_type' : series_type , 
-                       'search_phrase' : search_phrase ,
-                       'results' : results}
-    template = jinja_environment.get_template('add_number_to_series.html')
-    self.response.out.write(template.render(template_values))
-  def post(self):
+            template_values = { 'series_id' : series_id , 
+                                'description' : description ,
+                                'labels' : labels , 
+                                'series_type' : series_type , 
+                                'search_phrase' : search_phrase ,
+                                'results' : results}
+            template = jinja_environment.get_template('add_number_to_series.html')
+            self.response.out.write(template.render(template_values))
+    def post(self):
 #       add_number_to_series(unicode(self.request.get('number_id')),
 #                         unicode(self.request.get('series_id')))
         self.validate('editor')
