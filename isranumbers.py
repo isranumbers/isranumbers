@@ -41,6 +41,22 @@ class ValidateRequestHandler(webapp2.RequestHandler):
                 return
             self.redirect('/registrationform')
 
+class ValidateBlobstoreUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
+    def validate(self, permission):
+        user = users.get_current_user()
+        logging.info("validate called")
+        logging.info(user)
+        url = users.create_login_url(self.request.uri)
+        logging.info(url)
+        if not user:
+            self.redirect(users.create_login_url(self.request.uri))
+        else:
+            q = UsersList.all()
+            q.filter("email =" , user.email())
+            q.filter("permission =" , permission)
+            for p in q.run():
+                return
+            self.redirect('/registrationform')
 
 class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
@@ -103,27 +119,31 @@ class MainPage(webapp2.RequestHandler):
     self.response.out.write(template.render(template_values))
         
 #todo: create a class wuth validation option for the blobstore hanler like we did with the webapp2 request handler
-class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
+class UploadCsv(ValidateBlobstoreUploadHandler):
   def get(self): 
+    self.validate('editor')
     template_values = {
         'upload_url': blobstore.create_upload_url('/upload')
     }
     template = jinja_environment.get_template('insert_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
+    self.validate('editor')
     file_info = self.get_uploads('csv_file')[0]
     key_str = str(file_info.key())
     taskqueue.add(url='/worker',params = {'key_str' : key_str})
     self.redirect('/')
 
-class UploadSeriesXml(blobstore_handlers.BlobstoreUploadHandler):
+class UploadSeriesXml(ValidateBlobstoreUploadHandler):
   def get(self): 
+    self.validate('editor')
     template_values = {
         'upload_url': blobstore.create_upload_url('/uploadseriesxml')
     }
     template = jinja_environment.get_template('insert_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
+    self.validate('editor')
     file_info = self.get_uploads('csv_file')[0]
     key_str = str(file_info.key())
     taskqueue.add(url='/workerseriesxml',params = {'key_str' : key_str})
