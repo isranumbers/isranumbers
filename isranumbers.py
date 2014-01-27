@@ -98,8 +98,15 @@ class MainPage(webapp2.RequestHandler):
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-    logging.info(results)
-    
+    table_of_results = [document_to_dictionary(result) for result in results]
+
+    for result in table_of_results:
+        result['display_date']=display_date_of_number(result)
+        if u'series_type' in result:
+            result[u'url']="/displayseries?series_id_to_display=" + result[u'doc_id']
+        else:
+            result[u'url']="/singlenum?single_number=" + result[u'doc_id']
+    data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
     if users.get_current_user():
         url = users.create_logout_url(self.request.uri)
         url_linktext = 'Logout'
@@ -111,13 +118,24 @@ class MainPage(webapp2.RequestHandler):
         'url': url,
         'url_linktext': url_linktext,
         'search_phrase': search_phrase,
-        'results': results,
+        'results': table_of_results,
         'number_found' : number_found,
+        'data_display_order' : data_display_order
     }
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
         
+def display_date_of_number(document_dictionary):
+    display_date=""
+    if document_dictionary[u'day_of_number'] and document_dictionary[u'day_of_number'] != -1:
+        display_date+="%d" + "/" % document_dictionary[u'day_of_number']
+    if document_dictionary[u'month_of_number'] and document_dictionary[u'month_of_number'] != -1:
+        display_date+="%d" + "/" % document_dictionary[u'month_of_number']
+    if document_dictionary[u'year_of_number'] and document_dictionary[u'year_of_number'] != -1:
+        display_date+="%d" % document_dictionary[u'year_of_number']
+    return display_date
+
 #todo: create a class wuth validation option for the blobstore hanler like we did with the webapp2 request handler
 class UploadCsv(ValidateBlobstoreUploadHandler):
   def get(self): 
