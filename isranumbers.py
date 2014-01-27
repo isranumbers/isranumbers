@@ -128,11 +128,11 @@ class MainPage(webapp2.RequestHandler):
         
 def display_date_of_number(document_dictionary):
     display_date=""
-    if document_dictionary[u'day_of_number'] and document_dictionary[u'day_of_number'] != -1:
+    if u'day_of_number' in document_dictionary and document_dictionary[u'day_of_number'] != -1:
         display_date+="%d" + "/" % document_dictionary[u'day_of_number']
-    if document_dictionary[u'month_of_number'] and document_dictionary[u'month_of_number'] != -1:
+    if u'month_of_number' in document_dictionary and document_dictionary[u'month_of_number'] != -1:
         display_date+="%d" + "/" % document_dictionary[u'month_of_number']
-    if document_dictionary[u'year_of_number'] and document_dictionary[u'year_of_number'] != -1:
+    if u'year_of_number' in document_dictionary and document_dictionary[u'year_of_number'] != -1:
         display_date+="%d" % document_dictionary[u'year_of_number']
     return display_date
 
