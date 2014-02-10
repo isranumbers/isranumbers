@@ -85,19 +85,28 @@ class MainPage(webapp2.RequestHandler):
     results_for_number_of_data_documents=search.Index(name=_INDEX_NAME).search(query=empty_search_phrase_obj)
     number_found = results_for_number_of_data_documents.number_found
     if self.request.get('search_phrase'):
-      search_phrase=self.request.get('search_phrase')
+        search_phrase=self.request.get('search_phrase')
     else:
-      search_phrase=""
+        search_phrase=""
     #need to check if the scoredDocunemt istances are set to hebrew automatically
     #and also if the different fields can be in different language
     #expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
     sort_opts = search.SortOptions()
-    search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
-                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type'],
+    cursor=search.Cursor()
+    if self.request.get('cursor'):
+        cursor=search.Cursor(web_safe_string=self.request.get('cursor'))
+    search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=sort_opts,
+                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type' , 'author'],
                                                   snippeted_fields=['description','source'])
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+    cursor=results.cursor
+    
+    if cursor:
+        cursor_string=cursor.web_safe_string
+    else:
+        cursor_string=""
     table_of_results = [document_to_dictionary(result) for result in results]
 
     for result in table_of_results:
@@ -120,7 +129,8 @@ class MainPage(webapp2.RequestHandler):
         'search_phrase': search_phrase,
         'results': table_of_results,
         'number_found' : number_found,
-        'data_display_order' : data_display_order
+        'data_display_order' : data_display_order,
+        'cursor_string' : cursor_string
     }
 
     template = jinja_environment.get_template('index.html')
@@ -129,9 +139,9 @@ class MainPage(webapp2.RequestHandler):
 def display_date_of_number(document_dictionary):
     display_date=""
     if u'day_of_number' in document_dictionary and document_dictionary[u'day_of_number'] != -1:
-        display_date+="%d" + "/" % document_dictionary[u'day_of_number']
+        display_date+="%d/" % document_dictionary[u'day_of_number']
     if u'month_of_number' in document_dictionary and document_dictionary[u'month_of_number'] != -1:
-        display_date+="%d" + "/" % document_dictionary[u'month_of_number']
+        display_date+="%d/" % document_dictionary[u'month_of_number']
     if u'year_of_number' in document_dictionary and document_dictionary[u'year_of_number'] != -1:
         display_date+="%d" % document_dictionary[u'year_of_number']
     return display_date
