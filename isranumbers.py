@@ -108,9 +108,9 @@ class MainPage(webapp2.RequestHandler):
     else:
         cursor_string=""
     table_of_results = [document_to_dictionary(result) for result in results]
-
+#origin
     for result in table_of_results:
-        result['display_date']=display_date_of_number(result)
+        result[u'display_date']=display_date_of_number(result)
         if u'series_type' in result:
             result[u'url']="/displayseries?series_id_to_display=" + result[u'doc_id']
         else:
@@ -287,19 +287,21 @@ class SingleNumber(webapp2.RequestHandler):
     def get(self):
         doc_id_to_display = self.request.get('single_number')
         number_to_display = search.Index(_INDEX_NAME).get(doc_id_to_display)
-        for field in number_to_display.fields:
-            if field.name == u'contained_in_series':
-                seperate_series = field.value.split()
+        dictionary_of_number_to_display = document_to_dictionary(number_to_display)
+        dictionary_of_number_to_display[u'display_date']=display_date_of_number(dictionary_of_number_to_display)
+        separate_series = dictionary_of_number_to_display[u'contained_in_series'].split()
         list_of_series_description=[]
-        for series_id in seperate_series :
+        for series_id in separate_series :
             series = search.Index(_INDEX_NAME).get(series_id)
             for field in series.fields:
                 if field.name == u'description':
                     list_of_series_description.append((series_id, field.value))
-        self.display_number(number_to_display,list_of_series_description,doc_id_to_display)
+        #target
+        self.display_number(dictionary_of_number_to_display,list_of_series_description)
 
-    def display_number(self,number_to_display,list_of_series_description,doc_id_to_display):
-        template_values = {'number_to_display' : number_to_display , 'list_of_series_description' : list_of_series_description , 'doc_id_to_display' : doc_id_to_display}
+    def display_number(self,dictionary_of_number_to_display,list_of_series_description):
+        data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
+        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series

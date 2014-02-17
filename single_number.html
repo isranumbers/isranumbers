@@ -13,19 +13,35 @@
 {%include "content_hebrew.html" %}
 
 <div>
-{% for field in number_to_display.fields %}
-    {% if field.name == "contained_in_series" %}
-        {{field.name}} : {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a><p>
+<table>
+
+
+{% for field_name in data_display_order %}
+    <tr>
+    {% if field_name == "contained_in_series" %}
+        <td style="vertical-align:top">
+        {{field_name}}
+        </td>
+        <td>
+        {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a><p>
         {% endfor %}
+        </td>
     {% else %}
-        {{field.name}} : {{field.value}}
+        <td>
+        {{field_name}}
+        </td>
+        <td>
+        {{ dictionary_of_number_to_display[field_name] }}
+        </td>
     {% endif %}
-    <p>
+    </tr>
 {% endfor %}
+
+</table>
 </div>
 <div>
 <form action="/addnumbertoseries">
-    <input type="hidden" name="number_to_add_id" value="{{doc_id_to_display}}">
+    <input type="hidden" name="number_to_add_id" value="{{dictionary_of_number_to_display['doc_id']}}"> {# doc_id_to_display}}">#}
     <input type="submit" value="הוסף את המספר לסדרה">
 </form>
 </div>
