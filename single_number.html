@@ -15,12 +15,11 @@
 <div>
 <table>
 
-
 {% for field_name in data_display_order %}
     <tr>
-    {% if field_name == "contained_in_series" %}
+    {% if field_name[0] == "contained_in_series" %}
         <td style="vertical-align:top">
-        {{field_name}}
+        {{field_name[1]}} 
         </td>
         <td>
         {% for series in list_of_series_description %} <a href="/displayseries?series_id_to_display={{series[0]}}">{{series[1]}}</a><p>
@@ -28,10 +27,10 @@
         </td>
     {% else %}
         <td>
-        {{field_name}}
+        {{field_name[1]}} 
         </td>
         <td>
-        {{ dictionary_of_number_to_display[field_name] }}
+        {{ dictionary_of_number_to_display[field_name[0]] }} 
         </td>
     {% endif %}
     </tr>

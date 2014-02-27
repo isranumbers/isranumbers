@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# vim: set fileencoding=utf-8 :
 import cgi
 import datetime
 import urllib
@@ -300,8 +302,13 @@ class SingleNumber(webapp2.RequestHandler):
         self.display_number(dictionary_of_number_to_display,list_of_series_description)
 
     def display_number(self,dictionary_of_number_to_display,list_of_series_description):
-        data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
-        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description}
+        data_display_order_english=[u'number',u'units',u'description',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
+        hebrew_titles=[u'המספר' , u'יחידות המדידה' , u'תיאור המספר' , u'תאריך' , u'המקור' , u'המזין' , u'תגיות' , u'מופיע בסדרות']
+        data_display_order = []
+        for i in range(0,len(data_display_order_english)):
+            data_display_order.append((data_display_order_english[i],hebrew_titles[i]))
+#dealing with hebrew
+        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description , 'hebrew_titles' : hebrew_titles}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series
