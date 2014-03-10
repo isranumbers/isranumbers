@@ -118,16 +118,11 @@ class MainPage(webapp2.RequestHandler):
         else:
             result[u'url']="/singlenum?single_number=" + result[u'doc_id']
     data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
-    if users.get_current_user():
-        url = users.create_logout_url(self.request.uri)
-        url_linktext = 'Logout'
-    else:
-        url = users.create_login_url(self.request.uri)
-        url_linktext = 'Login' 
-    
+    url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
         'url': url,
         'url_linktext': url_linktext,
+        'nickname': nickname,
         'search_phrase': search_phrase,
         'results': table_of_results,
         'number_found' : number_found,
@@ -137,6 +132,22 @@ class MainPage(webapp2.RequestHandler):
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
+
+def login_status(uri):
+    user = users.get_current_user()
+    nickname=""
+    if user:
+        url = users.create_logout_url(uri)
+        url_linktext = 'Logout'
+        q = UsersList.all()
+        q.filter("email =" , user.email())
+        for p in q.run():
+            nickname=p.nickname
+    else:
+        url = users.create_login_url(uri)
+        url_linktext = 'Login' 
+ 
+    return (url,url_linktext,nickname)
         
 def display_date_of_number(document_dictionary):
     display_date=""
@@ -152,7 +163,11 @@ def display_date_of_number(document_dictionary):
 class UploadCsv(ValidateBlobstoreUploadHandler):
   def get(self): 
     self.validate('editor')
+    url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
+        'url': url,
+        'url_linktext': url_linktext,
+        'nickname': nickname,
         'upload_url': blobstore.create_upload_url('/upload')
     }
     template = jinja_environment.get_template('insert_file.html')
@@ -167,7 +182,11 @@ class UploadCsv(ValidateBlobstoreUploadHandler):
 class UploadSeriesXml(ValidateBlobstoreUploadHandler):
   def get(self): 
     self.validate('editor')
+    url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
+        'url': url,
+        'url_linktext': url_linktext,
+        'nickname': nickname,
         'upload_url': blobstore.create_upload_url('/uploadseriesxml')
     }
     template = jinja_environment.get_template('insert_file.html')
@@ -306,7 +325,15 @@ class SingleNumber(webapp2.RequestHandler):
         hebrew_titles=[u'תיאור הנתון', u'המספר' , u'יחידות המדידה' , u'תאריך' , u'המקור' , u'המזין' , u'תגיות' , u'מופיע בסדרות']
         data_display_order = zip(data_display_order_english,hebrew_titles)
 #dealing with hebrew
-        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'dictionary_of_number_to_display' : dictionary_of_number_to_display , 
+            'data_display_order' : data_display_order , 
+            'list_of_series_description' : list_of_series_description
+            }
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series
@@ -367,10 +394,13 @@ class AddNumberToSeries(ValidateRequestHandler):
 
             search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
             results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-
+            url,url_linktext,nickname=login_status(self.request.uri)
             template_values = {
-                                'search_phrase': search_phrase,
-                                'results': results,
+                'url': url,
+                'url_linktext': url_linktext,
+                'nickname': nickname,
+                'search_phrase': search_phrase,
+                'results': results,
             }
             template = jinja_environment.get_template('choose_series.html')
             self.response.out.write(template.render(template_values))
@@ -394,13 +424,17 @@ class AddNumberToSeries(ValidateRequestHandler):
 
             search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
             results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-
-            template_values = { 'series_id' : series_id , 
-                                'description' : description ,
-                                'labels' : labels , 
-                                'series_type' : series_type , 
-                                'search_phrase' : search_phrase ,
-                                'results' : results}
+            url,url_linktext,nickname=login_status(self.request.uri)
+            template_values = {
+                'url': url,
+                'url_linktext': url_linktext,
+                'nickname': nickname,
+                'series_id' : series_id , 
+                'description' : description ,
+                'labels' : labels , 
+                'series_type' : series_type , 
+                'search_phrase' : search_phrase ,
+                'results' : results}
             template = jinja_environment.get_template('add_number_to_series.html')
             self.response.out.write(template.render(template_values))
     def post(self):
@@ -487,16 +521,20 @@ class DisplaySeries(webapp2.RequestHandler):
         data_display_order_english=[u'description',u'series_type',u'labels',u'source',u'author']
         hebrew_titles=[u'תיאור הסדרה' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
         data_display_order = zip(data_display_order_english,hebrew_titles)
-
-        template_values =  {'series_to_display_dictionary' : series_to_display_dictionary,
-                            'data_display_order' : data_display_order,
-                            'list_of_numbers' : list_of_numbers,
-                            'series_description' : series_description,
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'series_to_display_dictionary' : series_to_display_dictionary,
+            'data_display_order' : data_display_order,
+            'list_of_numbers' : list_of_numbers,
+            'series_description' : series_description,
 #if te series is empty (without numbers) it can't be displayed since there is no default value to "num_dictionary[u'units']" - consider adding default value so also empty sries could be displayed (i think it make some sense that numbers will be added to the data base and then to the series by the user only after he created the series. alternativly we can consider not to let an empty series to be created - and only allow the series to be created after at list one number is added.
-                            'units' : num_dictionary[u'units'],
-		            	    'series_type' : series_type,
-                            'series_id_to_display' : series_id_to_display,
-                            'criteria' : criteria_name}
+            'units' : num_dictionary[u'units'],
+            'series_type' : series_type,
+            'series_id_to_display' : series_id_to_display,
+            'criteria' : criteria_name}
         #deside wether to pass to jinja all the series dictionary or just the relevant data
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
@@ -564,34 +602,39 @@ class UsersList(db.Model):
 
 class AuthenticationManagement(webapp2.RequestHandler):
     def get(self):
-        if users.get_current_user():
-            url = users.create_logout_url(self.request.uri)
-            url_linktext = 'Logout'
-        else:
-            url = users.create_login_url(self.request.uri)
-            url_linktext = 'Login' 
-    
+        url,url_linktext,nickname=login_status(self.request.uri)
         template_values = {
             'url': url,
-            'url_linktext': url_linktext
+            'url_linktext': url_linktext,
+            'nickname': nickname,
             }
         template = jinja_environment.get_template('authentication.html')
         self.response.out.write(template.render(template_values))
 
 class AdminManagementPage(webapp2.RequestHandler):
     def get(self):
-        template_values = { 'register_url' : '/authenticationmanagement/admin/registeruser',
-                            'unregister_url' : '/authenticationmanagement/admin/unregisteruser',
-                            'display_url' : '/authenticationmanagement/admin/displayuserslist'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'register_url' : '/authenticationmanagement/admin/registeruser',
+            'unregister_url' : '/authenticationmanagement/admin/unregisteruser',
+            'display_url' : '/authenticationmanagement/admin/displayuserslist'}
         template = jinja_environment.get_template('authentication_management.html')
         self.response.out.write(template.render(template_values))
 
 class EditorsManagementPage(ValidateRequestHandler):
     def get(self):
         self.validate('editor')
-        template_values = { 'register_url' : '/authenticationmanagement/editors/registeruser',
-                            'unregister_url' : '/authenticationmanagement/editors/unregisteruser',
-                            'display_url' : '/authenticationmanagement/editors/displayuserslist'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'register_url' : '/authenticationmanagement/editors/registeruser',
+            'unregister_url' : '/authenticationmanagement/editors/unregisteruser',
+            'display_url' : '/authenticationmanagement/editors/displayuserslist'}
         template = jinja_environment.get_template('authentication_management.html')
         self.response.out.write(template.render(template_values))
 
@@ -603,8 +646,13 @@ class AdminRegisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = { 'users' : users ,
-                            'register_url' : '/authenticationmanagement/admin/registeruser'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users ,
+            'register_url' : '/authenticationmanagement/admin/registeruser'}
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -624,8 +672,13 @@ class AdminUnregisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = { 'users' : users ,
-                            'unregister_url' : '/authenticationmanagement/admin/unregisteruser'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users ,
+            'unregister_url' : '/authenticationmanagement/admin/unregisteruser'}
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -642,7 +695,12 @@ class AdminDisplayUsersList(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = {'users' : users}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users}
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
 
@@ -653,8 +711,13 @@ class EditorsRegisterUser(ValidateRequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = { 'users' : users ,
-                            'register_url' : '/authenticationmanagement/editors/registeruser'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users ,
+            'register_url' : '/authenticationmanagement/editors/registeruser'}
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -676,8 +739,13 @@ class EditorsUnregisterUser(ValidateRequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = { 'users' : users ,
-                            'unregister_url' : '/authenticationmanagement/editors/unregisteruser'}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users ,
+            'unregister_url' : '/authenticationmanagement/editors/unregisteruser'}
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -695,7 +763,12 @@ class EditorsDisplayUsersList(ValidateRequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        template_values = {'users' : users}
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'users' : users}
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
 
