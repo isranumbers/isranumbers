@@ -302,13 +302,11 @@ class SingleNumber(webapp2.RequestHandler):
         self.display_number(dictionary_of_number_to_display,list_of_series_description)
 
     def display_number(self,dictionary_of_number_to_display,list_of_series_description):
-        data_display_order_english=[u'number',u'units',u'description',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
-        hebrew_titles=[u'המספר' , u'יחידות המדידה' , u'תיאור המספר' , u'תאריך' , u'המקור' , u'המזין' , u'תגיות' , u'מופיע בסדרות']
-        data_display_order = []
-        for i in range(0,len(data_display_order_english)):
-            data_display_order.append((data_display_order_english[i],hebrew_titles[i]))
+        data_display_order_english=[u'description',u'number',u'units',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
+        hebrew_titles=[u'תיאור הנתון', u'המספר' , u'יחידות המדידה' , u'תאריך' , u'המקור' , u'המזין' , u'תגיות' , u'מופיע בסדרות']
+        data_display_order = zip(data_display_order_english,hebrew_titles)
 #dealing with hebrew
-        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description , 'hebrew_titles' : hebrew_titles}
+        template_values = {'dictionary_of_number_to_display' : dictionary_of_number_to_display , 'data_display_order' : data_display_order , 'list_of_series_description' : list_of_series_description}
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series
@@ -484,7 +482,14 @@ class DisplaySeries(webapp2.RequestHandler):
             list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
         if series_type == "pie series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
+
+
+        data_display_order_english=[u'description',u'series_type',u'labels',u'source',u'author']
+        hebrew_titles=[u'תיאור הסדרה' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
+        data_display_order = zip(data_display_order_english,hebrew_titles)
+
         template_values =  {'series_to_display_dictionary' : series_to_display_dictionary,
+                            'data_display_order' : data_display_order,
                             'list_of_numbers' : list_of_numbers,
                             'series_description' : series_description,
 #if te series is empty (without numbers) it can't be displayed since there is no default value to "num_dictionary[u'units']" - consider adding default value so also empty sries could be displayed (i think it make some sense that numbers will be added to the data base and then to the series by the user only after he created the series. alternativly we can consider not to let an empty series to be created - and only allow the series to be created after at list one number is added.

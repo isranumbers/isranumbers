@@ -29,10 +29,25 @@ width:160px;
 }*/
 .navigation_bar
 {
-align:center; width:100%; table-layout:fixed; text-align:center; border: 1px solid black;
+align:center; width:100%; table-layout:fixed; text-align:center; border: 1px solid black; margin-top:10px;margin-bottom:10px;
 }
 .navigation_bar
 td
 {
 border: 1px solid black
+}
+.data_reference
+{
+border-collapse:collapse;
+border: 1px solid black;
+}
+.data_reference
+td
+{
+padding-top:3px;
+padding-bottom:3px;
+padding-right:10px;
+padding-left:10px;
+border-collapse:collapse;
+border: 1px solid black;
 }

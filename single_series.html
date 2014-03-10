@@ -58,12 +58,19 @@
 
 {%include "content_hebrew.html" %}
 
-    <div>
-    description : {{series_to_display_dictionary['description']}}<p>
-    series type : {{series_to_display_dictionary['series_type']}}<p>
-    labels : {{series_to_display_dictionary['labels']}}<p>
-    author : {{series_to_display_dictionary['author']}}<p>
-    </div>
+
+<table class = "data_reference"> 
+{% for field_name in data_display_order %}
+    <tr>
+    <td>
+    {{field_name[1]}} 
+    </td>
+    <td>
+    {{ series_to_display_dictionary[field_name[0]] }} 
+    </td>
+    </tr>
+{% endfor %}
+</table>
 
     <div>
     <form action="/addnumbertoseries">
