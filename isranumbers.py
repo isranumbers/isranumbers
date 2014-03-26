@@ -103,20 +103,7 @@ class MainPage(webapp2.RequestHandler):
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-    cursor=results.cursor
-    
-    if cursor:
-        cursor_string=cursor.web_safe_string
-    else:
-        cursor_string=""
-    table_of_results = [document_to_dictionary(result) for result in results]
-#origin
-    for result in table_of_results:
-        result[u'display_date']=display_date_of_number(result)
-        if u'series_type' in result:
-            result[u'url']="/displayseries?series_id_to_display=" + result[u'doc_id']
-        else:
-            result[u'url']="/singlenum?single_number=" + result[u'doc_id']
+    cursor_string,table_of_results = create_table_of_results(results) 
     data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
     url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
@@ -132,6 +119,21 @@ class MainPage(webapp2.RequestHandler):
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
+
+def create_table_of_results(results):
+    cursor=results.cursor
+    if cursor:
+        cursor_string=cursor.web_safe_string
+    else:
+        cursor_string=""
+    table_of_results = [document_to_dictionary(result) for result in results]
+    for result in table_of_results:
+        result[u'display_date']=display_date_of_number(result)
+        if u'series_type' in result:
+            result[u'url']="/displayseries?series_id_to_display=" + result[u'doc_id']
+        else:
+            result[u'url']="/singlenum?single_number=" + result[u'doc_id']
+    return (cursor_string,table_of_results)
 
 def login_status(uri):
     user = users.get_current_user()
@@ -407,15 +409,13 @@ class AddNumberToSeries(ValidateRequestHandler):
 # the following commands create the web page when AddNumberToSeries is called with series id
         else:
             series_id = self.request.get('series_id')
+            series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
             series = search.Index(name=_INDEX_NAME).get(series_id)
             for field in series.fields:
                 if field.name == "description" :
                     description = field.value
                 if field.name == "labels":    
                     labels = field.value
-                if field.name == "series_type" :
-                    series_type = field.value
-
 
             sort_opts = search.SortOptions()
             search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
@@ -424,6 +424,8 @@ class AddNumberToSeries(ValidateRequestHandler):
 
             search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
             results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+            cursor_string,table_of_results=create_table_of_results(results)
+            data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
             url,url_linktext,nickname=login_status(self.request.uri)
             template_values = {
                 'url': url,
@@ -434,15 +436,57 @@ class AddNumberToSeries(ValidateRequestHandler):
                 'labels' : labels , 
                 'series_type' : series_type , 
                 'search_phrase' : search_phrase ,
-                'results' : results}
+                'results' : table_of_results,
+                'data_display_order' : data_display_order,
+                'cursor_string' : cursor_string,
+                'criteria_name' : criteria_name,
+                'list_of_numbers' : list_of_numbers,
+                }
             template = jinja_environment.get_template('add_number_to_series.html')
             self.response.out.write(template.render(template_values))
+
     def post(self):
 #       add_number_to_series(unicode(self.request.get('number_id')),
 #                         unicode(self.request.get('series_id')))
         self.validate('editor')
         add_numbers_to_series(self.request.get('series_id'),self.request.get_all('numbers_in_series'))
         self.redirect('/')
+
+def get_series_values_for_display(series_id):
+        series_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id))
+        number_ids_in_series=series_dictionary[u'list_of_number_ids'].split()
+        series_type=series_dictionary[u'series_type']
+        series_labels=series_dictionary[u'labels'].split()
+        criteria_name = ''
+        if series_type == "pie series":
+            criteria_name=next(label.replace(u'criteria:', u'' , 1) for label in series_labels if label.startswith(u'criteria:'))
+
+        list_of_numbers=[]
+        for number_id in number_ids_in_series:
+            num_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(number_id))
+            if series_type == "time series":
+                list_of_numbers.append({'number' : num_dictionary[u'number'],
+                                        'year' : int(num_dictionary[u'year_of_number']),
+                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
+                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
+            if series_type == "pie series":
+                labels = num_dictionary[u'labels'].split()
+                criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
+                list_of_numbers.append({'number' : num_dictionary[u'number'],
+                                        'criteria_value' : criteria_value ,
+#the next lines ar added to prevent bug of mising date data in the javascript code - maybe there is a better way to deal with that bug such as catching exception
+                                        'year' : int(num_dictionary[u'year_of_number']),
+                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
+                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
+#end of the addition to solve the javascript bug 
+        if series_type == "time series":
+            list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
+        if series_type == "pie series":
+            list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
+#todo - we need to add "units" to the output of the function
+        units = num_dictionary[u'units']
+        return (series_type , criteria_name , list_of_numbers , units)
+
 
 def add_to_series_index(author,description,labels,series_type):
   putresult=search.Index(name=_INDEX_NAME).put(search.Document(
@@ -480,43 +524,14 @@ def add_number_to_series(number_id,series_id):
    
 class DisplaySeries(webapp2.RequestHandler):
     def get(self):
-      series_id_to_display = self.request.get('series_id_to_display')
-      self.display_series(series_id_to_display)
-    def display_series(self, series_id_to_display):
-        series_to_display_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id_to_display))
+        series_id_to_display = self.request.get('series_id_to_display')
+        self.display_series(series_id_to_display)
+    def display_series(self, series_id):
+        series_to_display_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id))
         number_ids_in_series=series_to_display_dictionary[u'list_of_number_ids'].split()
         series_description=series_to_display_dictionary[u'description']
-        series_type=series_to_display_dictionary[u'series_type']
         series_labels=series_to_display_dictionary[u'labels'].split()
-        criteria_name = ''
-        if series_type == "pie series":
-            criteria_name=next(label.replace(u'criteria:', u'' , 1) for label in series_labels if label.startswith(u'criteria:'))
-
-
-# ToDo we stopped here 12/12/2013, we need to get the criteria name from the series labels
-        list_of_numbers=[]
-        for number_id in number_ids_in_series:
-            num_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(number_id))
-            if series_type == "time series":
-                list_of_numbers.append({'number' : num_dictionary[u'number'],
-                                        'year' : int(num_dictionary[u'year_of_number']),
-                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
-                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
-            if series_type == "pie series":
-                labels = num_dictionary[u'labels'].split()
-                criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
-                list_of_numbers.append({'number' : num_dictionary[u'number'],
-                                        'criteria_value' : criteria_value ,
-#the next lines ar added to prevent bug of mising date data in the javascript code - maybe there is a better way to deal with that bug such as catching exception
-                                        'year' : int(num_dictionary[u'year_of_number']),
-                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
-                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
-#end of the addition to solve the javascript bug 
-        if series_type == "time series":
-            list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
-        if series_type == "pie series":
-            list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
-
+        series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
 
         data_display_order_english=[u'description',u'series_type',u'labels',u'source',u'author']
         hebrew_titles=[u'תיאור הסדרה' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
@@ -531,15 +546,14 @@ class DisplaySeries(webapp2.RequestHandler):
             'list_of_numbers' : list_of_numbers,
             'series_description' : series_description,
 #if te series is empty (without numbers) it can't be displayed since there is no default value to "num_dictionary[u'units']" - consider adding default value so also empty sries could be displayed (i think it make some sense that numbers will be added to the data base and then to the series by the user only after he created the series. alternativly we can consider not to let an empty series to be created - and only allow the series to be created after at list one number is added.
-            'units' : num_dictionary[u'units'],
+            'units' : units,
             'series_type' : series_type,
-            'series_id_to_display' : series_id_to_display,
+            'series_id_to_display' : series_id,
             'criteria' : criteria_name}
         #deside wether to pass to jinja all the series dictionary or just the relevant data
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
         # ToDo: add links to numbers.
-
 
 def document_to_dictionary(document):
     document_dictionary = {u'doc_id' : document.doc_id}

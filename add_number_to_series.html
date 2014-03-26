@@ -40,45 +40,64 @@
   <input type="submit" value="בצע חיפוש">
 </form>
 
+<table style="width:90%;">
+<tr>
+<td style="vertical-align:top">
+
 <form method="post">
 
 <table border="2">
 <tr>
 <th>המספר</th>
 <th>יחידות</th>
-<th>תאריך</th>
 <th>תיאור</th>
-<th>מקור</th>
+<th>תאריך</th>
+<th>המקור</th>
+<th>המזין</th>
 <th>נמצא בסדרה</th>
 <th>הוסף לסדרה</th>
 </tr>
    
-{% for scored_document in results %}
-    {% for field in scored_document.fields %}
-        {% if field.name == "series_type" %}
-        {% elif loop.last %}
-        <tr>
-            {% for field in scored_document.fields %}
-                <td>
-                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{field.value}} </a>&nbsp;
-                </td>
-            {% endfor %}
-            {% for expression in scored_document.expressions %}
-                <td>
-                <a href = "/singlenum?single_number={{ scored_document.doc_id }}">{{expression.value}} </a>&nbsp;
-                </td>
-            {% endfor %}
+{% for result in results %}
+    <tr>
+        {% for field_name in data_display_order %}
             <td>
-            <input type="checkbox" name="numbers_in_series" value="{{scored_document.doc_id }}">
+            <a href = "{{ result['url'] }}">{{ result[field_name] }} </a>&nbsp;
             </td>
-        {% endif %}    
-    {% endfor %}        
+        {% endfor %}
+        <td>
+        <input type="checkbox" name="numbers_in_series" value="{{result['doc_id'] }}">
+        </td>
     </tr>
 {% endfor %}
+
+
 </table>
 <input type="hidden" name="series_id" value="{{ series_id }}">
 <input type="submit" value="עדכן סדרה">
 </form>
+
+</td>
+
+<td style="vertical-align:top">
+<div style="height:440px;overflow:auto;">
+{{criteria_name}}
+<table border = "2">
+{% for number in list_of_numbers %}
+    <tr>
+        {% for field_name in number.keys() %}
+            <td>
+            {{ number[field_name] }}
+            </td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+
+
+</table>
+</td>
+</tr>
+</table>
 
 </div>
 </body>
