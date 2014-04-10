@@ -410,6 +410,8 @@ class AddNumberToSeries(ValidateRequestHandler):
         else:
             series_id = self.request.get('series_id')
             series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
+            for number in list_of_numbers:
+                number[u'display_date'] = display_date_of_number(number)
             series = search.Index(name=_INDEX_NAME).get(series_id)
             for field in series.fields:
                 if field.name == "description" :
@@ -465,28 +467,27 @@ def get_series_values_for_display(series_id):
         for number_id in number_ids_in_series:
             num_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(number_id))
             if series_type == "time series":
-                list_of_numbers.append({'number' : num_dictionary[u'number'],
-                                        'year' : int(num_dictionary[u'year_of_number']),
-                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
-                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
+                list_of_numbers.append(add_date_for_google_chart(num_dictionary))
             if series_type == "pie series":
-                labels = num_dictionary[u'labels'].split()
-                criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
-                list_of_numbers.append({'number' : num_dictionary[u'number'],
-                                        'criteria_value' : criteria_value ,
-#the next lines ar added to prevent bug of mising date data in the javascript code - maybe there is a better way to deal with that bug such as catching exception
-                                        'year' : int(num_dictionary[u'year_of_number']),
-                                        'month' : 1 if int(num_dictionary[u'month_of_number']) == -1 else int(num_dictionary[u'month_of_number']),
-                                        'day' : 1 if int(num_dictionary[u'day_of_number']) == -1 else int(num_dictionary[u'day_of_number'])})
-#end of the addition to solve the javascript bug 
+                list_of_numbers.append(add_criteria_for_google_chart(num_dictionary,criteria_name))
         if series_type == "time series":
-            list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['year'],k['month'],k['day']))
+            list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['google_chart_year'],k['google_chart_month'],k['google_chart_day']))
         if series_type == "pie series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
-#todo - we need to add "units" to the output of the function
         units = num_dictionary[u'units']
         return (series_type , criteria_name , list_of_numbers , units)
 
+def add_date_for_google_chart(number_as_dictionary):
+    number_as_dictionary['google_chart_year'] = int(number_as_dictionary[u'year_of_number'])
+    number_as_dictionary['google_chart_month'] = 1 if int(number_as_dictionary[u'month_of_number']) == -1 else int(number_as_dictionary[u'month_of_number'])
+    number_as_dictionary['google_chart_day'] = 1 if int(number_as_dictionary[u'day_of_number']) == -1 else int(number_as_dictionary[u'day_of_number'])
+    return number_as_dictionary
+
+def add_criteria_for_google_chart(number_as_dictionary,criteria_name):
+    labels = num_dictionary[u'labels'].split()
+    criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
+    number_as_dictionary['criteria_value'] = criteria_value
+    return number_as_dictionary
 
 def add_to_series_index(author,description,labels,series_type):
   putresult=search.Index(name=_INDEX_NAME).put(search.Document(

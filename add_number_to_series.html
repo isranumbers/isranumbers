@@ -80,16 +80,26 @@
 </td>
 
 <td style="vertical-align:top">
-<div style="height:440px;overflow:auto;">
+רשימת המספרים בסדרה
+<div style="height:430px;overflow:auto;">
 {{criteria_name}}
 <table border = "2">
+<tr>
+<th>
+המספר
+</th>
+<th>
+תאריך
+</th>
+</tr>
 {% for number in list_of_numbers %}
     <tr>
-        {% for field_name in number.keys() %}
-            <td>
-            {{ number[field_name] }}
-            </td>
-        {% endfor %}
+    <td>
+    {{ number['number'] }}
+    </td>
+    <td>
+    {{ number['display_date'] }}
+    </td>
     </tr>
 {% endfor %}
 
