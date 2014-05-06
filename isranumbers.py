@@ -378,6 +378,7 @@ class InsertSeries(ValidateRequestHandler):
 
 # we should change the optiones to get to this class. on 22.12.2013 the option to get to the handler from the display series page is fine but it can't be accessed from the tool bar. one option is to cancel the option to get to the handler from the tool bar. another option is to deal with the case of directing to this handler without series id by opening a search for series , then select the series we want and than display it in the proper way
 class AddNumberToSeries(ValidateRequestHandler):
+# 5.6.2014 - split handler - now it handles enrtrence from 2 links - one from series page with series id and one from the navigation bar with no series id (and than we do a search only for series , becouse we need to choose the series we are adding numbers to). we want to split those options to 2 handlers
     def get(self): 
         self.validate('editor')
         if self.request.get('search_phrase'):
@@ -386,23 +387,28 @@ class AddNumberToSeries(ValidateRequestHandler):
             search_phrase=""
 # the following commands create the web page shown when AddNumberToSeries is called from the menu bar (without series id)
         if not self.request.get('series_id'):
-# the following line should be changed for a better solution to get only results that are series amd not numbers
-            search_phrase+=" " + "series"
+# the following line is added to get only results that are series and not numbers
+            search_phrase=""
             sort_opts = search.SortOptions()
 # we should consider adding source to the series data
             search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
                                                           returned_fields=['series_type'],
                                                           snippeted_fields=['description','source'])
 
-            search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+            search_phrase_obj = search.Query(query_string=search_phrase + " series_type : series", options=search_phrase_options)
+####
             results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+            cursor_string,table_of_results = create_table_of_results(results) 
+            data_display_order=[u'series_type',u'description',u'source']
             url,url_linktext,nickname=login_status(self.request.uri)
             template_values = {
                 'url': url,
                 'url_linktext': url_linktext,
                 'nickname': nickname,
                 'search_phrase': search_phrase,
-                'results': results,
+                'results': table_of_results,
+                'data_display_order' : data_display_order,
+                'cursor_string' : cursor_string
             }
             template = jinja_environment.get_template('choose_series.html')
             self.response.out.write(template.render(template_values))
