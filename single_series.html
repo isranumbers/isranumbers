@@ -90,7 +90,7 @@
                     <tr>
                     <td>
                     {% if series_type == "time series" %}
-                        year 
+                        תאריך 
                     {% elif series_type == "pie series" %}
                         {{criteria}}
                     {% endif %}
@@ -107,7 +107,9 @@
                         {% endif %}
                         </td>
                         <td>
+                        <div dir="ltr">
                         {{full_number_data['number']}}
+                        </div>
                         </td>
                         </tr>
                     {% endfor %} 
