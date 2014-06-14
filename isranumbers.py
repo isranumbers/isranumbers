@@ -376,88 +376,95 @@ class InsertSeries(ValidateRequestHandler):
 			                        self.request.get('series_type'))
     self.redirect('/addnumbertoseries?series_id=%s' %series_id)
 
-# we should change the optiones to get to this class. on 22.12.2013 the option to get to the handler from the display series page is fine but it can't be accessed from the tool bar. one option is to cancel the option to get to the handler from the tool bar. another option is to deal with the case of directing to this handler without series id by opening a search for series , then select the series we want and than display it in the proper way
-class AddNumberToSeries(ValidateRequestHandler):
-# 5.6.2014 - split handler - now it handles enrtrence from 2 links - one from series page with series id and one from the navigation bar with no series id (and than we do a search only for series , becouse we need to choose the series we are adding numbers to). we want to split those options to 2 handlers
-    def get(self): 
+class ChooseSeriesToEdit(ValidateRequestHandler):
+    def get(self):
         self.validate('editor')
+        search_phrase=""
         if self.request.get('search_phrase'):
             search_phrase=self.request.get('search_phrase')
-        else:
-            search_phrase=""
-# the following commands create the web page shown when AddNumberToSeries is called from the menu bar (without series id)
-        if not self.request.get('series_id'):
-# the following line is added to get only results that are series and not numbers
-            search_phrase=""
-            sort_opts = search.SortOptions()
+        sort_opts = search.SortOptions()
 # we should consider adding source to the series data
-            search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
-                                                          returned_fields=['series_type'],
-                                                          snippeted_fields=['description','source'])
+        search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
+                                                      returned_fields=['series_type'],
+                                                      snippeted_fields=['description','source'])
 
-            search_phrase_obj = search.Query(query_string=search_phrase + " series_type : series", options=search_phrase_options)
-####
-            results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-            cursor_string,table_of_results = create_table_of_results(results) 
-            data_display_order=[u'series_type',u'description',u'source']
-            url,url_linktext,nickname=login_status(self.request.uri)
-            template_values = {
-                'url': url,
-                'url_linktext': url_linktext,
-                'nickname': nickname,
-                'search_phrase': search_phrase,
-                'results': table_of_results,
-                'data_display_order' : data_display_order,
-                'cursor_string' : cursor_string
+        search_phrase_obj = search.Query(query_string=search_phrase + " series_type : series", options=search_phrase_options)
+        results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+        cursor_string,table_of_results = create_table_of_results(results) 
+        data_display_order=[u'series_type',u'description',u'source']
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'search_phrase': search_phrase,
+            'results': table_of_results,
+            'data_display_order' : data_display_order,
+            'cursor_string' : cursor_string
+        }
+        template = jinja_environment.get_template('choose_series.html')
+        self.response.out.write(template.render(template_values))
+    
+
+class AddNumberToSeries(ValidateRequestHandler):
+    def get(self): 
+        self.validate('editor')
+        search_phrase=""
+        if self.request.get('search_phrase'):
+            search_phrase=self.request.get('search_phrase')
+        series_id = self.request.get('series_id')
+        series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
+        for number in list_of_numbers:
+            number[u'display_date'] = display_date_of_number(number)
+        series = search.Index(name=_INDEX_NAME).get(series_id)
+        for field in series.fields:
+            if field.name == "description" :
+                description = field.value
+            if field.name == "labels":    
+                labels = field.value
+
+        sort_opts = search.SortOptions()
+        
+        cursor=search.Cursor()
+        if self.request.get('cursor'):
+            cursor=search.Cursor(web_safe_string=self.request.get('cursor'))
+        search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=sort_opts,
+                                                      returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
+                                                      snippeted_fields=['description','source'])
+
+        search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
+        results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+        cursor_string,table_of_results=create_table_of_results(results)
+        list_of_number_ids=[ number[u'doc_id'] for number in list_of_numbers]
+
+        for result in table_of_results:
+            result[u'in_series_displayed'] = result[u'doc_id'] in list_of_number_ids
+
+
+        data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
+        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'series_id' : series_id , 
+            'description' : description ,
+            'labels' : labels , 
+            'series_type' : series_type , 
+            'search_phrase' : search_phrase ,
+            'results' : table_of_results,
+            'data_display_order' : data_display_order,
+            'cursor_string' : cursor_string,
+            'criteria_name' : criteria_name,
+            'list_of_numbers' : list_of_numbers,
             }
-            template = jinja_environment.get_template('choose_series.html')
-            self.response.out.write(template.render(template_values))
-# the following commands create the web page when AddNumberToSeries is called with series id
-        else:
-            series_id = self.request.get('series_id')
-            series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
-            for number in list_of_numbers:
-                number[u'display_date'] = display_date_of_number(number)
-            series = search.Index(name=_INDEX_NAME).get(series_id)
-            for field in series.fields:
-                if field.name == "description" :
-                    description = field.value
-                if field.name == "labels":    
-                    labels = field.value
-
-            sort_opts = search.SortOptions()
-            search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
-                                                          returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
-                                                          snippeted_fields=['description','source'])
-
-            search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
-            results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-            cursor_string,table_of_results=create_table_of_results(results)
-            data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
-            url,url_linktext,nickname=login_status(self.request.uri)
-            template_values = {
-                'url': url,
-                'url_linktext': url_linktext,
-                'nickname': nickname,
-                'series_id' : series_id , 
-                'description' : description ,
-                'labels' : labels , 
-                'series_type' : series_type , 
-                'search_phrase' : search_phrase ,
-                'results' : table_of_results,
-                'data_display_order' : data_display_order,
-                'cursor_string' : cursor_string,
-                'criteria_name' : criteria_name,
-                'list_of_numbers' : list_of_numbers,
-                }
-            template = jinja_environment.get_template('add_number_to_series.html')
-            self.response.out.write(template.render(template_values))
+        template = jinja_environment.get_template('add_number_to_series.html')
+        self.response.out.write(template.render(template_values))
 
     def post(self):
-#       add_number_to_series(unicode(self.request.get('number_id')),
-#                         unicode(self.request.get('series_id')))
         self.validate('editor')
         add_numbers_to_series(self.request.get('series_id'),self.request.get_all('numbers_in_series'))
+        remove_numbers_from_series(self.request.get('series_id'),self.request.get_all('numbers_to_delete'))
         self.redirect('/')
 
 def get_series_values_for_display(series_id):
@@ -607,6 +614,33 @@ def add_numbers_to_series(series_id,numbers_list_of_ids):
         else:
             updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + string_of_number_ids))
     search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
+
+def remove_numbers_from_series(series_id,numbers_to_remove_ids):
+    series = search.Index(name=_INDEX_NAME).get(series_id)
+    for number_id in numbers_to_remove_ids:
+        number = search.Index(_INDEX_NAME).get(number_id)
+        updated_fields = []
+        for field in number.fields:
+            if field.name != u"contained_in_series":
+                updated_fields.append(field)
+            else:
+                updated_list_of_contained_in_series=field.value.split()
+                updated_list_of_contained_in_series.remove(series_id)
+                updated_string_of_series_ids=u' '.join(updated_list_of_contained_in_series)
+                updated_fields.append(search.TextField(name=field.name, value=updated_string_of_series_ids))
+        search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
+    updated_fields = []
+    for field in series.fields:
+        if field.name != u'list_of_number_ids':
+            updated_fields.append(field)
+        else:
+            updated_list_of_number_ids=field.value.split()
+            for number_id in numbers_to_remove_ids:
+                updated_list_of_number_ids.remove(number_id)
+            updated_string_of_number_ids=u' '.join(updated_list_of_number_ids)
+            updated_fields.append(search.TextField(name=field.name, value=updated_string_of_number_ids))
+    search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
+
 
 class UsersList(db.Model):
   """Models an individual User and its authentications."""
@@ -807,6 +841,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/delete', DeleteNumber),
                                ('/singlenum', SingleNumber),
                                ('/insertseries', InsertSeries),
+                               ('/chooseseriestoedit', ChooseSeriesToEdit),
                                ('/addnumbertoseries', AddNumberToSeries),
                                ('/displayseries', DisplaySeries),
                                ('/authenticationmanagement', AuthenticationManagement),
