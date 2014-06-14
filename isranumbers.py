@@ -170,9 +170,9 @@ class UploadCsv(ValidateBlobstoreUploadHandler):
         'url': url,
         'url_linktext': url_linktext,
         'nickname': nickname,
-        'upload_url': blobstore.create_upload_url('/upload')
+        'upload_url': blobstore.create_upload_url('/uploadnumbercsv')
     }
-    template = jinja_environment.get_template('insert_file.html')
+    template = jinja_environment.get_template('insert_csv_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
     self.validate('editor')
@@ -191,7 +191,7 @@ class UploadSeriesXml(ValidateBlobstoreUploadHandler):
         'nickname': nickname,
         'upload_url': blobstore.create_upload_url('/uploadseriesxml')
     }
-    template = jinja_environment.get_template('insert_file.html')
+    template = jinja_environment.get_template('insert_xml_series_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
     self.validate('editor')
@@ -277,7 +277,11 @@ class InsertNumber(ValidateRequestHandler):
     self.response.out.write(template.render())
   def post(self):
     self.validate('editor')
+    number_id = None
+    if self.request.get('number_id'):
+        number_id=self.request.get('number_id')
     add_to_number_index(get_author(),
+                        number_id,
                         float(self.request.get('number')),
                         self.request.get('units'),
                         self.request.get('description'),
@@ -348,8 +352,9 @@ def get_author():
   return author  
 
 
-def add_to_number_index(author,number,units,description,labels,source,year,month,day):
+def add_to_number_index(author,number_id,number,units,description,labels,source,year,month,day):
   x = search.Index(name=_INDEX_NAME).put(search.Document(
+    doc_id=number_id,
     fields=[search.TextField(name='author', value=author),
               search.NumberField(name='number', value=number),
               search.TextField(name='units', value=units),
@@ -414,8 +419,6 @@ class AddNumberToSeries(ValidateRequestHandler):
             search_phrase=self.request.get('search_phrase')
         series_id = self.request.get('series_id')
         series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
-        for number in list_of_numbers:
-            number[u'display_date'] = display_date_of_number(number)
         series = search.Index(name=_INDEX_NAME).get(series_id)
         for field in series.fields:
             if field.name == "description" :
@@ -488,6 +491,8 @@ def get_series_values_for_display(series_id):
         if series_type == "pie series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
         units = num_dictionary[u'units']
+        for number in list_of_numbers:
+            number[u'display_date'] = display_date_of_number(number)
         return (series_type , criteria_name , list_of_numbers , units)
 
 def add_date_for_google_chart(number_as_dictionary):
@@ -538,9 +543,7 @@ def add_number_to_series(number_id,series_id):
    
 class DisplaySeries(webapp2.RequestHandler):
     def get(self):
-        series_id_to_display = self.request.get('series_id_to_display')
-        self.display_series(series_id_to_display)
-    def display_series(self, series_id):
+        series_id = self.request.get('series_id_to_display')
         series_to_display_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id))
         number_ids_in_series=series_to_display_dictionary[u'list_of_number_ids'].split()
         series_description=series_to_display_dictionary[u'description']
@@ -572,7 +575,10 @@ class DisplaySeries(webapp2.RequestHandler):
 def document_to_dictionary(document):
     document_dictionary = {u'doc_id' : document.doc_id}
     for field in document.fields:
-        document_dictionary[field.name] = field.value
+        if field.name in (u'year_of_number',u'month_of_number',u'day_of_number'):
+            document_dictionary[field.name] = int(field.value)
+        else:
+            document_dictionary[field.name] = field.value
     if hasattr(document,'expressions'):
         for expression in document.expressions:
             document_dictionary[expression.name]=expression.value
@@ -612,11 +618,15 @@ def add_numbers_to_series(series_id,numbers_list_of_ids):
         if field.name != u'list_of_number_ids':
             updated_fields.append(field)
         else:
-            updated_fields.append(search.TextField(name=field.name, value=field.value + u' ' + string_of_number_ids))
+            updated_list_of_number_ids=set(field.value.split())
+            updated_list_of_number_ids|= set(numbers_list_of_ids)
+            updated_list_of_number_ids=list(updated_list_of_number_ids)
+            updated_string_of_number_ids=u' '.join(updated_list_of_number_ids)
+
+            updated_fields.append(search.TextField(name=field.name, value=updated_string_of_number_ids))
     search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
 
 def remove_numbers_from_series(series_id,numbers_to_remove_ids):
-    series = search.Index(name=_INDEX_NAME).get(series_id)
     for number_id in numbers_to_remove_ids:
         number = search.Index(_INDEX_NAME).get(number_id)
         updated_fields = []
@@ -629,14 +639,19 @@ def remove_numbers_from_series(series_id,numbers_to_remove_ids):
                 updated_string_of_series_ids=u' '.join(updated_list_of_contained_in_series)
                 updated_fields.append(search.TextField(name=field.name, value=updated_string_of_series_ids))
         search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
+    delete_number_ids_from_series(series_id,numbers_to_remove_ids)
+
+# we split the following code from the previous function (remove_numbers_from_series) since we use this code again in the delete_single_number function
+def delete_number_ids_from_series(series_id,numbers_to_remove_ids):
+    series = search.Index(name=_INDEX_NAME).get(series_id)
     updated_fields = []
     for field in series.fields:
         if field.name != u'list_of_number_ids':
             updated_fields.append(field)
         else:
-            updated_list_of_number_ids=field.value.split()
-            for number_id in numbers_to_remove_ids:
-                updated_list_of_number_ids.remove(number_id)
+            updated_list_of_number_ids=set(field.value.split())
+            updated_list_of_number_ids-= set(numbers_to_remove_ids)
+            updated_list_of_number_ids=list(updated_list_of_number_ids)
             updated_string_of_number_ids=u' '.join(updated_list_of_number_ids)
             updated_fields.append(search.TextField(name=field.name, value=updated_string_of_number_ids))
     search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
@@ -832,9 +847,56 @@ class RegistrationForm(webapp2.RequestHandler):
         template = jinja_environment.get_template('registration_form.html')
         self.response.out.write(template.render())
 
+def date_to_string(date):
+    if date == -1:
+        return u"ללא"
+    else:
+        return str(int(date))
+
+class EditNumber(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        number_id=self.request.get('number_id')
+        number = search.Index(name=_INDEX_NAME).get(number_id)
+        number_dictionary=document_to_dictionary(number)
+        url,url_linktext,nickname=login_status(self.request.uri)
+        date_of_number_as_string = {u'year' : date_to_string(number_dictionary[u'year_of_number']),
+                                    u'month' : date_to_string(number_dictionary[u'month_of_number']),
+                                    u'day' : date_to_string(number_dictionary[u'day_of_number'])}
+        template_values = {
+            'url': url,
+            'url_linktext': url_linktext,
+            'nickname': nickname,
+            'date_of_number_as_string' : date_of_number_as_string,
+            'number_dictionary' : number_dictionary}
+        template = jinja_environment.get_template('edit_number.html')
+        self.response.out.write(template.render(template_values))
+
+
+class DeleteNumber(ValidateRequestHandler):
+    def post(self):
+        self.validate('editor')
+        number_id=self.request.get('number_id')
+        delete_single_number(number_id)
+        self.redirect('/')
+
+
+# the function delete the number from the index and remove its ids from all the series that contained it
+def delete_single_number(number_id):
+    number = search.Index(name=_INDEX_NAME).get(number_id)
+    number_dictionary=document_to_dictionary(number)
+    list_of_series_ids = number_dictionary[u'contained_in_series'].split() 
+# the following lines delete the number_id from all the series it was part of
+    for series_id in list_of_series_ids:
+        delete_number_ids_from_series(series_id,[number_id])
+# the following 2 lines delete the number from the main index    
+    doc_index = search.Index(name=_INDEX_NAME)
+    doc_index.delete(number_id)
+    
+
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
-                               ('/upload', UploadCsv),
+                               ('/uploadnumbercsv', UploadCsv),
                                ('/uploadseriesxml', UploadSeriesXml),
                                ('/worker', CsvWorker),
                                ('/workerseriesxml', SeriesXmlWorker),
@@ -843,6 +905,8 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertseries', InsertSeries),
                                ('/chooseseriestoedit', ChooseSeriesToEdit),
                                ('/addnumbertoseries', AddNumberToSeries),
+                               ('/editnumber', EditNumber),
+                               ('/deletenumber', DeleteNumber),
                                ('/displayseries', DisplaySeries),
                                ('/authenticationmanagement', AuthenticationManagement),
                                ('/authenticationmanagement/editors', EditorsManagementPage),

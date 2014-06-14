@@ -1,0 +1,22 @@
+<html lang="he">
+<head dir="rtl">
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>
+  נתונים בישראל
+  </title>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+</head>
+
+<body>
+<div dir="rtl">
+
+{%include "content_hebrew.html" %}
+הזן קובץ מספרים בפורמט CSV
+<form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="csv_file">
+    <input type="submit" value="העלה קובץ CSV">
+</form>
+
+</div>
+</body>
+</html>
