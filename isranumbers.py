@@ -280,20 +280,29 @@ class InsertNumber(ValidateRequestHandler):
     number_id = None
     if self.request.get('number_id'):
         number_id=self.request.get('number_id')
-    add_to_number_index(get_author(),
-                        number_id,
-                        float(self.request.get('number')),
-                        self.request.get('units'),
-                        self.request.get('description'),
-                        self.request.get('labels'),
-                        self.request.get('source'),
-                        int(self.request.get('year_of_number')),
-                        int(self.request.get('month_of_number')),
-                        int(self.request.get('day_of_number')))     
-              
+        
+    number = self.request.get('number')
+    units = self.request.get('units')
+    description = self.request.get('description')
+    source = self.request.get('source')
+    year = self.request.get('year_of_number')
+    month = self.request.get('month_of_number')
+    day = self.request.get('day_of_number') 
+    if not check_duplicate_numbers(number,units,description,source,year,month,day):
+        logging.info('no duplicate')
+        add_to_number_index(get_author(),
+                            number_id,
+                            float(number),
+                            units,
+                            description,
+                            self.request.get('labels'),
+                            source,
+                            int(year),
+                            int(month),
+                            int(day))     
     self.redirect('/')
     
-class DeleteNumber(ValidateRequestHandler):
+class DeleteManyNumbers(ValidateRequestHandler):
   def get(self):
     self.validate('editor')
     template = jinja_environment.get_template('delete_numbers.html')
@@ -892,7 +901,38 @@ def delete_single_number(number_id):
 # the following 2 lines delete the number from the main index    
     doc_index = search.Index(name=_INDEX_NAME)
     doc_index.delete(number_id)
-    
+
+# this function delete document from the index without furthere checkings
+class DeleteDocumentBruteForce(ValidateRequestHandler):
+    def get(self):
+        self.validate('editor')
+        template = jinja_environment.get_template('delete_number_brute_force.html')
+        self.response.out.write(template.render())
+        
+    def post(self):
+        self.validate('editor')
+        document_id=self.request.get('document_id')
+        doc_index = search.Index(name=_INDEX_NAME)
+        doc_index.delete(document_id)
+        self.redirect('/')
+        
+# i stopped here on 9 july 2014
+# we delete duplicate data if the fields: number , units , description , source , year , month and day are identical to existing number
+# (i.e. - if only the labels or tha author are different we see that as duplicate data and delete it)
+def check_duplicate_numbers(number,units,description,source,year,month,day):
+        search_phrase='number = %s AND units = "%s" AND description = "%s" AND source = "%s" AND year_of_number = %s AND month_of_number = %s AND day_of_number = %s' % (number,units,description,source,year,month,day)
+        sort_opts = search.SortOptions()
+        search_phrase_options = search.QueryOptions(limit=1, sort_options=sort_opts ,number_found_accuracy = 10)
+        search_phrase_obj = search.Query(query_string=search_phrase , options=search_phrase_options)
+        results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+        logging.info(search_phrase)
+        logging.info('results is %s ' % results)
+        if results.number_found > 0:
+            logging.info('true duplicate')
+            return True
+        else:
+            logging.info('false duplicate')
+            return False
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
@@ -900,13 +940,14 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/uploadseriesxml', UploadSeriesXml),
                                ('/worker', CsvWorker),
                                ('/workerseriesxml', SeriesXmlWorker),
-                               ('/delete', DeleteNumber),
+                               ('/delete', DeleteManyNumbers),
                                ('/singlenum', SingleNumber),
                                ('/insertseries', InsertSeries),
                                ('/chooseseriestoedit', ChooseSeriesToEdit),
                                ('/addnumbertoseries', AddNumberToSeries),
                                ('/editnumber', EditNumber),
                                ('/deletenumber', DeleteNumber),
+                               ('/deletedocumentbruteforce',DeleteDocumentBruteForce),
                                ('/displayseries', DisplaySeries),
                                ('/authenticationmanagement', AuthenticationManagement),
                                ('/authenticationmanagement/editors', EditorsManagementPage),
