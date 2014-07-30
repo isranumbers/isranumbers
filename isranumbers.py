@@ -195,7 +195,7 @@ class UploadSeriesXml(ValidateBlobstoreUploadHandler):
     self.response.out.write(template.render(template_values))
   def post(self):
     self.validate('editor')
-    file_info = self.get_uploads('csv_file')[0]
+    file_info = self.get_uploads('xml_file')[0]
     key_str = str(file_info.key())
     taskqueue.add(url='/workerseriesxml',params = {'key_str' : key_str})
     self.redirect('/')
@@ -258,15 +258,26 @@ class CsvWorker(webapp2.RequestHandler):
     csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
     
     for row in csv_file_content:      
-      add_to_number_index(get_author(),          
-                          float(row[0]),
-                          row[1],
-                          row[2],
-                          row[3],
-                          row[4],
-                          int(row[5]),
-                          int(row[6]),
-                          int(row[7]))
+        number = row[0]
+        units = row[1]
+        description = row[2]
+        source = row[4]
+        year = row[5]
+        month = row[6]
+        day = row[7]
+        if not check_duplicate_numbers(number,units,description,source,year,month,day):
+            add_to_number_index(get_author(),          
+                                None,
+                                float(number),
+                                units,
+                                description,
+                                row[3],
+                                source,
+                                int(year),
+                                int(month),
+                                int(day))
+        else:
+            logging.info("duplicate number %s %s %s %s %s %s %s" % (number,units,description,row[3],year,month,day))
     logging.info("worker finished")
 
 
