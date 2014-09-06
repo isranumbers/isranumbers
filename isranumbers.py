@@ -218,36 +218,47 @@ class SeriesXmlWorker(webapp2.RequestHandler):
             search.TextField(name='description', value=description),
             search.TextField(name='labels', value=labels),
             search.TextField(name='series_type',value=series_type)]
-        series_id=search.Index(name=_INDEX_NAME).put(search.Document(
-            fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
-        for number in child:
-            value=float(number.attrib['value'])
-            year='-1'
-            month='-1'
-            day='-1'
-            time=number.attrib['time_period']
-            if time.find('-') != -1:
-                year = time.split('-')[0]
-                month = time.split('-')[1]
-                if len(time.split('-'))==3:
-                    day = time.split('-')[2]
-            else:
-                year=time
-            number_id=search.Index(name=_INDEX_NAME).put(search.Document(
-                fields=[search.TextField(name='author', value=author),
-                search.NumberField(name='number', value=value),
-                search.TextField(name='units', value=units),
-                search.TextField(name='description', value=description),
-                search.TextField(name='labels', value=labels),
-                search.TextField(name='source', value=source),
-                search.NumberField(name='year_of_number', value=int(year)),
-                search.NumberField(name='month_of_number', value=int(month)),
-                search.NumberField(name='day_of_number', value=int(day)),
-                search.TextField(name='contained_in_series', value=series_id)]))[0].id
-            list_of_number_ids+=u" " + number_id
-        search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
-            fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
+        if not check_duplicate_series(description):
+            series_id=search.Index(name=_INDEX_NAME).put(search.Document(
+                fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
+            for number in child:
+                value=float(number.attrib['value'])
+                year='-1'
+                month='-1'
+                day='-1'
+                time=number.attrib['time_period']
+                if time.find('-') != -1:
+                    year = time.split('-')[0]
+                    month = time.split('-')[1]
+                    if len(time.split('-'))==3:
+                        day = time.split('-')[2]
+                else:
+                    year=time
+                check_duplicate=check_duplicate_numbers(value,units,description,source,year,month,day)
+                if check_duplicate:
+                    number=check_duplicate
+#stopped here 27.8.2014
+                    number_id=number.doc_id
+                    add_series_id_to_number(number,series_id)
+                else:
+                    number_id=search.Index(name=_INDEX_NAME).put(search.Document(
+                        fields=[search.TextField(name='author', value=author),
+                        search.NumberField(name='number', value=value),
+                        search.TextField(name='units', value=units),
+                        search.TextField(name='description', value=description),
+                        search.TextField(name='labels', value=labels),
+                        search.TextField(name='source', value=source),
+                        search.NumberField(name='year_of_number', value=int(year)),
+                        search.NumberField(name='month_of_number', value=int(month)),
+                        search.NumberField(name='day_of_number', value=int(day)),
+                        search.TextField(name='contained_in_series', value=series_id)]))[0].id
+                list_of_number_ids+=u" " + number_id
+            search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
+                fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
+
+        else:
+            logging.info("duplicate series %s" % description)
 
 class CsvWorker(webapp2.RequestHandler):
   def post(self):
@@ -553,6 +564,12 @@ def add_number_to_series(number_id,series_id):
         updated_fields.append(field)
   search.Index(name=_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = series_id))
   number=search.Index(name=_INDEX_NAME).get(number_id)
+  add_series_id_to_number(number,series_id)
+
+# use dictionary instead of number to omit number id
+# we stopped here 27.8.14
+def add_series_id_to_number(number,series_id):  
+  number_id=number.doc_id
   updated_fields = []
   for field in number.fields:
       if field.name == u'contained_in_series' and string.find(field.value,series_id) == -1:
@@ -913,6 +930,39 @@ def delete_single_number(number_id):
     doc_index = search.Index(name=_INDEX_NAME)
     doc_index.delete(number_id)
 
+class DeleteSeries(ValidateRequestHandler):
+    def post(self):
+        self.validate('editor')
+        series_id=self.request.get('series_id')
+        delete_single_series(series_id)
+        self.redirect('/')
+        
+def delete_single_series(series_id):
+    series = search.Index(name=_INDEX_NAME).get(series_id)
+    series_dictionary=document_to_dictionary(series)
+    list_of_number_ids = series_dictionary[u'list_of_number_ids'].split() 
+#the following lines delete the series_id from all the numbers it contained
+    for number_id in list_of_number_ids:
+        delete_series_id_from_number(number_id,[series_id])
+#the following 2 lines delete the series from the main index
+    doc_index = search.Index(name=_INDEX_NAME)
+    doc_index.delete(series_id)
+        
+
+def delete_series_id_from_number(number_id,series_to_remove_id):
+    number = search.Index(name=_INDEX_NAME).get(number_id)
+    updated_fields = []
+    for field in number.fields:
+        if field.name != u'contained_in_series':
+            updated_fields.append(field)
+        else:
+            updated_list_of_series_ids=set(field.value.split())
+            updated_list_of_series_ids-= set(series_to_remove_id)
+            updated_list_of_series_ids=list(updated_list_of_series_ids)
+            updated_string_of_series_ids=u' '.join(updated_list_of_series_ids)
+            updated_fields.append(search.TextField(name=field.name, value=updated_string_of_series_ids))
+    search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
+
 # this function delete document from the index without furthere checkings
 class DeleteDocumentBruteForce(ValidateRequestHandler):
     def get(self):
@@ -927,23 +977,29 @@ class DeleteDocumentBruteForce(ValidateRequestHandler):
         doc_index.delete(document_id)
         self.redirect('/')
         
-# i stopped here on 9 july 2014
 # we delete duplicate data if the fields: number , units , description , source , year , month and day are identical to existing number
-# (i.e. - if only the labels or tha author are different we see that as duplicate data and delete it)
+# (i.e. - if only the labels or the author are different we see that as duplicate data and delete it)
 def check_duplicate_numbers(number,units,description,source,year,month,day):
-        search_phrase='number = %s AND units = "%s" AND description = "%s" AND source = "%s" AND year_of_number = %s AND month_of_number = %s AND day_of_number = %s' % (number,units,description,source,year,month,day)
-        sort_opts = search.SortOptions()
-        search_phrase_options = search.QueryOptions(limit=1, sort_options=sort_opts ,number_found_accuracy = 10)
-        search_phrase_obj = search.Query(query_string=search_phrase , options=search_phrase_options)
-        results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
-        logging.info(search_phrase)
-        logging.info('results is %s ' % results)
-        if results.number_found > 0:
-            logging.info('true duplicate')
-            return True
-        else:
-            logging.info('false duplicate')
-            return False
+    search_phrase='number = %s AND units = "%s" AND description = "%s" AND source = "%s" AND year_of_number = %s AND month_of_number = %s AND day_of_number = %s' % (number,units,description,source,year,month,day)
+    return check_duplicate_phrase(search_phrase)
+
+def check_duplicate_phrase(search_phrase):
+    sort_opts = search.SortOptions()
+    search_phrase_options = search.QueryOptions(limit=1, sort_options=sort_opts ,number_found_accuracy = 10)
+    search_phrase_obj = search.Query(query_string=search_phrase , options=search_phrase_options)
+    results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
+    logging.info(search_phrase)
+    if results.number_found > 0:
+        logging.info('true duplicate')
+        document_to_return = iter(results).next()
+        return document_to_return
+    else:
+        logging.info('false duplicate')
+        return None
+
+def check_duplicate_series(description):
+    search_phrase='description = "%s" AND series_type : series' % description
+    return check_duplicate_phrase(search_phrase)
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/insertnumber', InsertNumber),
@@ -958,6 +1014,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/addnumbertoseries', AddNumberToSeries),
                                ('/editnumber', EditNumber),
                                ('/deletenumber', DeleteNumber),
+                               ('/deleteseries', DeleteSeries),
                                ('/deletedocumentbruteforce',DeleteDocumentBruteForce),
                                ('/displayseries', DisplaySeries),
                                ('/authenticationmanagement', AuthenticationManagement),
