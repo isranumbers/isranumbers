@@ -238,7 +238,6 @@ class SeriesXmlWorker(webapp2.RequestHandler):
                 check_duplicate=check_duplicate_numbers(value,units,description,source,year,month,day)
                 if check_duplicate:
                     number=check_duplicate
-#stopped here 27.8.2014
                     number_id=number.doc_id
                     add_series_id_to_number(number,series_id)
                 else:
@@ -566,8 +565,6 @@ def add_number_to_series(number_id,series_id):
   number=search.Index(name=_INDEX_NAME).get(number_id)
   add_series_id_to_number(number,series_id)
 
-# use dictionary instead of number to omit number id
-# we stopped here 27.8.14
 def add_series_id_to_number(number,series_id):  
   number_id=number.doc_id
   updated_fields = []
@@ -977,6 +974,11 @@ class DeleteDocumentBruteForce(ValidateRequestHandler):
         doc_index.delete(document_id)
         self.redirect('/')
         
+class About(webapp2.RequestHandler):
+    def get(self):
+        template = jinja_environment.get_template('about.html')
+        self.response.out.write(template.render())
+
 # we delete duplicate data if the fields: number , units , description , source , year , month and day are identical to existing number
 # (i.e. - if only the labels or the author are different we see that as duplicate data and delete it)
 def check_duplicate_numbers(number,units,description,source,year,month,day):
@@ -1026,6 +1028,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/authenticationmanagement/admin/registeruser',AdminRegisterUser),
                                ('/authenticationmanagement/admin/unregisteruser',AdminUnregisterUser),
                                ('/authenticationmanagement/admin/displayuserslist',AdminDisplayUsersList),
-                               ('/registrationform',RegistrationForm)],
+                               ('/registrationform',RegistrationForm),
+                               ('/about',About)],
                               debug=True)
 
