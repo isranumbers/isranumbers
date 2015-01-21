@@ -11,6 +11,32 @@
 <div dir="rtl">
 
 {%include "content_hebrew.html" %}
+
+<p>קובץ הזנת הסדרות הוא בפורמט XML. 
+<br>
+דוגמא לתוכן של קובץ מתאים היא:
+<br>
+<div class="text_block"> 
+
+&lt?xml version="1.0" encoding="iso-8859-8" ?&gt
+<br>
+&ltData_Set&gt
+<br>
+  &ltSeries description="desc" labels="label1 label2" series_type="time series" unit="meter" source="my source"&gt
+<br>
+    &ltobs time_period="1980-8-21" value="42.2" /&gt
+<br>
+    &ltobs time_period="1980-5" value="37.6" /&gt
+<br>
+    &ltobs time_period="1981" value="43.3"/&gt
+<br>
+  &lt/Series&gt
+<br>
+&lt/Data_Set&gt
+<br>
+
+</div>
+
 הזן קובץ סדרות בפורמט XML
 <form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
     <input type="file" name="xml_file">

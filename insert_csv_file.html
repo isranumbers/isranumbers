@@ -11,7 +11,23 @@
 <div dir="rtl">
 
 {%include "content_hebrew.html" %}
-הזן קובץ מספרים בפורמט CSV
+
+<p>קובץ הזנת המספרים הוא בפורמט CSV, כאשר כל שורה מכילה נתונים עבור מספר בודד.
+<br>
+דוגמא לתוכן של קובץ מתאים עם שני מספרים היא:
+<br>
+(1- הוא הערך המוזן לשדה ה"חודש" ו\או ה"יום" כאשר הנתונים הקיימים הם בתדירות יותר נמוכה  מתדירות יומית או חודשים)
+<div class="text_block"> 
+
+"number","units","description","tags","source","year","month","day"
+<br>
+"42.2","meter","desc","label1 label2","my source","1980","-1","-1"
+<br>
+"43.3","meter","desc","label3 label4","my source","1981","1","21"
+<br>
+</div>
+
+<p>הזן קובץ מספרים בפורמט CSV
 <form action="{{ upload_url }}" method="post" enctype="multipart/form-data">
     <input type="file" name="csv_file">
     <input type="submit" value="העלה קובץ CSV">

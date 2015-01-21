@@ -99,7 +99,8 @@ class MainPage(webapp2.RequestHandler):
         cursor=search.Cursor(web_safe_string=self.request.get('cursor'))
     search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=sort_opts,
                                                   returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type' , 'author'],
-                                                  snippeted_fields=['description','source'])
+                                                  #snippeted_fields=['description','source']
+                                                  )
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
@@ -421,7 +422,8 @@ class ChooseSeriesToEdit(ValidateRequestHandler):
 # we should consider adding source to the series data
         search_phrase_options = search.QueryOptions(limit=10, sort_options=sort_opts,
                                                       returned_fields=['series_type'],
-                                                      snippeted_fields=['description','source'])
+                                                      #snippeted_fields=['description','source']
+                                                      )
 
         search_phrase_obj = search.Query(query_string=search_phrase + " series_type : series", options=search_phrase_options)
         results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
@@ -463,7 +465,8 @@ class AddNumberToSeries(ValidateRequestHandler):
             cursor=search.Cursor(web_safe_string=self.request.get('cursor'))
         search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=sort_opts,
                                                       returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number'],
-                                                      snippeted_fields=['description','source'])
+                                                      #snippeted_fields=['description','source']
+                                                      )
 
         search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
         results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
@@ -527,7 +530,7 @@ def get_series_values_for_display(series_id):
 
 def add_date_for_google_chart(number_as_dictionary):
     number_as_dictionary['google_chart_year'] = int(number_as_dictionary[u'year_of_number'])
-    number_as_dictionary['google_chart_month'] = 1 if int(number_as_dictionary[u'month_of_number']) == -1 else int(number_as_dictionary[u'month_of_number'])
+    number_as_dictionary['google_chart_month'] = 0 if int(number_as_dictionary[u'month_of_number']) == -1 else int(number_as_dictionary[u'month_of_number']) -1
     number_as_dictionary['google_chart_day'] = 1 if int(number_as_dictionary[u'day_of_number']) == -1 else int(number_as_dictionary[u'day_of_number'])
     return number_as_dictionary
 

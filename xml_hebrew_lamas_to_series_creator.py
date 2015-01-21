@@ -45,7 +45,7 @@ for line in source:
 
     target[fileindex].write(line)
     count+=1
-    if count == 1000:
+    if count == 100:
         for line1 in source:
             line1 = line1.replace('& ', '&amp; ')
             line1 = line1.replace('&glass', '&amp;glass')
