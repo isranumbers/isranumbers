@@ -25,41 +25,21 @@ jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 _INDEX_NAME = 'data_index'
+            
+def validate(handler,permission):
+    user = users.get_current_user()
+    logging.info("validate called for user %s" % user)
+    if not user:
+        handler.redirect(users.create_login_url(handler.request.uri))
+    else:
+        q = UsersList.all()
+        q.filter("email =" , user.email())
+        q.filter("permission =" , permission)
+        for p in q.run():
+            return
+        handler.redirect('/registrationform')
 
-class ValidateRequestHandler(webapp2.RequestHandler):
-    def validate(self, permission):
-        user = users.get_current_user()
-        logging.info("validate called")
-        logging.info(user)
-        url = users.create_login_url(self.request.uri)
-        logging.info(url)
-        if not user:
-            self.redirect(users.create_login_url(self.request.uri))
-        else:
-            q = UsersList.all()
-            q.filter("email =" , user.email())
-            q.filter("permission =" , permission)
-            for p in q.run():
-                return
-            self.redirect('/registrationform')
-
-class ValidateBlobstoreUploadHandler(blobstore_handlers.BlobstoreUploadHandler):
-    def validate(self, permission):
-        user = users.get_current_user()
-        logging.info("validate called")
-        logging.info(user)
-        url = users.create_login_url(self.request.uri)
-        logging.info(url)
-        if not user:
-            self.redirect(users.create_login_url(self.request.uri))
-        else:
-            q = UsersList.all()
-            q.filter("email =" , user.email())
-            q.filter("permission =" , permission)
-            for p in q.run():
-                return
-            self.redirect('/registrationform')
-
+    
 class IsraNumber(db.Model):
   """Models an individual IsraNumber entry with an author, number, 
   units, and description."""
@@ -163,9 +143,9 @@ def display_date_of_number(document_dictionary):
     return display_date
 
 #todo: create a class wuth validation option for the blobstore hanler like we did with the webapp2 request handler
-class UploadCsv(ValidateBlobstoreUploadHandler):
+class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
   def get(self): 
-    self.validate('editor')
+    validate(self,'editor')
     url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
         'url': url,
@@ -176,15 +156,15 @@ class UploadCsv(ValidateBlobstoreUploadHandler):
     template = jinja_environment.get_template('insert_csv_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
-    self.validate('editor')
+    validate(self,'editor')
     file_info = self.get_uploads('csv_file')[0]
     key_str = str(file_info.key())
     taskqueue.add(url='/worker',params = {'key_str' : key_str})
     self.redirect('/')
 
-class UploadSeriesXml(ValidateBlobstoreUploadHandler):
+class UploadSeriesXml(blobstore_handlers.BlobstoreUploadHandler):
   def get(self): 
-    self.validate('editor')
+    validate(self,'editor')
     url,url_linktext,nickname=login_status(self.request.uri)
     template_values = {
         'url': url,
@@ -195,7 +175,7 @@ class UploadSeriesXml(ValidateBlobstoreUploadHandler):
     template = jinja_environment.get_template('insert_xml_series_file.html')
     self.response.out.write(template.render(template_values))
   def post(self):
-    self.validate('editor')
+    validate(self,'editor')
     file_info = self.get_uploads('xml_file')[0]
     key_str = str(file_info.key())
     taskqueue.add(url='/workerseriesxml',params = {'key_str' : key_str})
@@ -217,6 +197,7 @@ class SeriesXmlWorker(webapp2.RequestHandler):
         source=child.attrib['source']
         data_fields=[search.TextField(name='author', value=author),
             search.TextField(name='description', value=description),
+            search.TextField(name='units', value=units),
             search.TextField(name='labels', value=labels),
             search.TextField(name='series_type',value=series_type)]
 
@@ -292,13 +273,13 @@ class CsvWorker(webapp2.RequestHandler):
     logging.info("worker finished")
 
 
-class InsertNumber(ValidateRequestHandler):
+class InsertNumber(webapp2.RequestHandler):
   def get(self): 
-    self.validate('editor')
+    validate(self,'editor')
     template = jinja_environment.get_template('insert_number.html')
     self.response.out.write(template.render())
   def post(self):
-    self.validate('editor')
+    validate(self,'editor')
     number_id = None
     if self.request.get('number_id'):
         number_id=self.request.get('number_id')
@@ -324,13 +305,13 @@ class InsertNumber(ValidateRequestHandler):
                             int(day))     
     self.redirect('/')
     
-class DeleteManyNumbers(ValidateRequestHandler):
+class DeleteManyNumbers(webapp2.RequestHandler):
   def get(self):
-    self.validate('editor')
+    validate(self,'editor')
     template = jinja_environment.get_template('delete_numbers.html')
     self.response.out.write(template.render())
   def post(self):
-    self.validate('editor')
+    validate(self,'editor')
     documents_to_delete = int(self.request.get('documents_to_delete'))
     doc_index = search.Index(name=_INDEX_NAME)
     for i in range(0,documents_to_delete):    
@@ -399,22 +380,33 @@ def add_to_number_index(author,number_id,number,units,description,labels,source,
   logging.info(dir(x[0]))
   logging.info(x)
     
-class InsertSeries(ValidateRequestHandler):
+class InsertSeries(webapp2.RequestHandler):
   def get(self): 
-    self.validate('editor')
+    validate(self,'editor')
     template = jinja_environment.get_template('insert_series.html')
     self.response.out.write(template.render())
   def post(self):
-    self.validate('editor')
+    validate(self,'editor')
+    series_type = self.request.get('series_type')
+    logging.info("ffff")
+    logging.info(series_type)
+    if series_type == "pie series":
+        logging.info("good")
+        labels = "%s criteria:%s" % (self.request.get('labels'),self.request.get('criteria'))
+        logging.info(labels)
+    else:
+        labels = self.request.get('labels')
+
     series_id = add_to_series_index(get_author(),
                                     self.request.get('description'),
-                                    self.request.get('labels'),
+                                    self.request.get('units'),
+                                    labels,
 			                        self.request.get('series_type'))
     self.redirect('/addnumbertoseries?series_id=%s' %series_id)
 
-class ChooseSeriesToEdit(ValidateRequestHandler):
+class ChooseSeriesToEdit(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         search_phrase=""
         if self.request.get('search_phrase'):
             search_phrase=self.request.get('search_phrase')
@@ -443,9 +435,9 @@ class ChooseSeriesToEdit(ValidateRequestHandler):
         self.response.out.write(template.render(template_values))
     
 
-class AddNumberToSeries(ValidateRequestHandler):
+class AddNumberToSeries(webapp2.RequestHandler):
     def get(self): 
-        self.validate('editor')
+        validate(self,'editor')
         search_phrase=""
         if self.request.get('search_phrase'):
             search_phrase=self.request.get('search_phrase')
@@ -498,7 +490,7 @@ class AddNumberToSeries(ValidateRequestHandler):
         self.response.out.write(template.render(template_values))
 
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         add_numbers_to_series(self.request.get('series_id'),self.request.get_all('numbers_in_series'))
         remove_numbers_from_series(self.request.get('series_id'),self.request.get_all('numbers_to_delete'))
         self.redirect('/')
@@ -506,6 +498,7 @@ class AddNumberToSeries(ValidateRequestHandler):
 def get_series_values_for_display(series_id):
         series_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id))
         number_ids_in_series=series_dictionary[u'list_of_number_ids'].split()
+        units = series_dictionary[u'units']
         series_type=series_dictionary[u'series_type']
         series_labels=series_dictionary[u'labels'].split()
         criteria_name = ''
@@ -523,7 +516,7 @@ def get_series_values_for_display(series_id):
             list_of_numbers = sorted(list_of_numbers, key=lambda k: (k['google_chart_year'],k['google_chart_month'],k['google_chart_day']))
         if series_type == "pie series":
             list_of_numbers = sorted(list_of_numbers, key=lambda k: k['number'])
-        units = num_dictionary[u'units']
+        
         for number in list_of_numbers:
             number[u'display_date'] = display_date_of_number(number)
         return (series_type , criteria_name , list_of_numbers , units)
@@ -535,18 +528,19 @@ def add_date_for_google_chart(number_as_dictionary):
     return number_as_dictionary
 
 def add_criteria_for_google_chart(number_as_dictionary,criteria_name):
-    labels = num_dictionary[u'labels'].split()
+    labels = number_as_dictionary[u'labels'].split()
     criteria_value=next(label.replace(criteria_name + u':', u'' , 1) for label in labels if label.startswith(criteria_name + u':'))
     number_as_dictionary['criteria_value'] = criteria_value
     return number_as_dictionary
 
-def add_to_series_index(author,description,labels,series_type):
+def add_to_series_index(author,description,units,labels,series_type):
   putresult=search.Index(name=_INDEX_NAME).put(search.Document(
     fields=[search.TextField(name='author', value=author),
             search.TextField(name='list_of_number_ids', value=''),
             search.TextField(name='description', value=description),
+            search.TextField(name='units', value=units),
             search.TextField(name='labels', value=labels),
-	    search.TextField(name='series_type',value=series_type)]))
+    	    search.TextField(name='series_type',value=series_type)]))
   logging.info("put result is")
   logging.info(putresult[0].id)
   return putresult[0].id
@@ -587,8 +581,8 @@ class DisplaySeries(webapp2.RequestHandler):
         series_labels=series_to_display_dictionary[u'labels'].split()
         series_type , criteria_name , list_of_numbers , units = get_series_values_for_display(series_id)
 
-        data_display_order_english=[u'description',u'series_type',u'labels',u'source',u'author']
-        hebrew_titles=[u'תיאור הסדרה' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
+        data_display_order_english=[u'description',u'units',u'series_type',u'labels',u'source',u'author']
+        hebrew_titles=[u'תיאור הסדרה' , u'יחידות' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
         data_display_order = zip(data_display_order_english,hebrew_titles)
         url,url_linktext,nickname=login_status(self.request.uri)
         template_values = {
@@ -731,9 +725,9 @@ class AdminManagementPage(webapp2.RequestHandler):
         template = jinja_environment.get_template('authentication_management.html')
         self.response.out.write(template.render(template_values))
 
-class EditorsManagementPage(ValidateRequestHandler):
+class EditorsManagementPage(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         url,url_linktext,nickname=login_status(self.request.uri)
         template_values = {
             'url': url,
@@ -811,9 +805,9 @@ class AdminDisplayUsersList(webapp2.RequestHandler):
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
 
-class EditorsRegisterUser(ValidateRequestHandler):
+class EditorsRegisterUser(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         q=UsersList.all()
         users = []
         for user in q.run():
@@ -828,7 +822,7 @@ class EditorsRegisterUser(ValidateRequestHandler):
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         user = UsersList(email=self.request.get("email"))
         q = UsersList.all()
         q.filter("email =" , self.request.get("email"))
@@ -839,9 +833,9 @@ class EditorsRegisterUser(ValidateRequestHandler):
         user.put()
         self.redirect('/authenticationmanagement/editors/displayuserslist')
 
-class EditorsUnregisterUser(ValidateRequestHandler):
+class EditorsUnregisterUser(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         q=UsersList.all()
         users = []
         for user in q.run():
@@ -856,16 +850,16 @@ class EditorsUnregisterUser(ValidateRequestHandler):
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         q = UsersList.all()
         q.filter("nickname =" , self.request.get("nickname"))
         for p in q.run():
             p.delete()
         self.redirect('/authenticationmanagement/editors/displayuserslist')
 
-class EditorsDisplayUsersList(ValidateRequestHandler):
+class EditorsDisplayUsersList(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         q=UsersList.all()
         users = []
         for user in q.run():
@@ -890,9 +884,9 @@ def date_to_string(date):
     else:
         return str(int(date))
 
-class EditNumber(ValidateRequestHandler):
+class EditNumber(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         number_id=self.request.get('number_id')
         number = search.Index(name=_INDEX_NAME).get(number_id)
         number_dictionary=document_to_dictionary(number)
@@ -910,9 +904,9 @@ class EditNumber(ValidateRequestHandler):
         self.response.out.write(template.render(template_values))
 
 
-class DeleteNumber(ValidateRequestHandler):
+class DeleteNumber(webapp2.RequestHandler):
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         number_id=self.request.get('number_id')
         delete_single_number(number_id)
         self.redirect('/')
@@ -930,9 +924,9 @@ def delete_single_number(number_id):
     doc_index = search.Index(name=_INDEX_NAME)
     doc_index.delete(number_id)
 
-class DeleteSeries(ValidateRequestHandler):
+class DeleteSeries(webapp2.RequestHandler):
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         series_id=self.request.get('series_id')
         delete_single_series(series_id)
         self.redirect('/')
@@ -964,14 +958,14 @@ def delete_series_id_from_number(number_id,series_to_remove_id):
     search.Index(_INDEX_NAME).put(search.Document(fields=updated_fields, doc_id = number_id))
 
 # this function delete document from the index without furthere checkings
-class DeleteDocumentBruteForce(ValidateRequestHandler):
+class DeleteDocumentBruteForce(webapp2.RequestHandler):
     def get(self):
-        self.validate('editor')
+        validate(self,'editor')
         template = jinja_environment.get_template('delete_number_brute_force.html')
         self.response.out.write(template.render())
         
     def post(self):
-        self.validate('editor')
+        validate(self,'editor')
         document_id=self.request.get('document_id')
         doc_index = search.Index(name=_INDEX_NAME)
         doc_index.delete(document_id)

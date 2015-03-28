@@ -19,16 +19,23 @@
     <td id="InsertData">תיאור:</td><td> <textarea name="description" rows="3" cols="40"></textarea></td>
     </tr>
     <tr>
+    <td id="InsertData">יחידות:</td><td> <textarea name="units" rows="1" cols="40"></textarea></td>
+    </tr>
+    <tr>
     <td id="InsertData">תגיות:</td><td> <textarea name="labels" rows="4" cols="20"></textarea></td>
     </tr>
     <tr>
     <td id="InsertData">סוג הסדרה:</td>
     <td>
-    <input type="radio" name="series_type" value="time series" checked>סדרה עתית<br>
-    <input type="radio" name="series_type" value="pie series">סדרת פאי
+    <input type="radio" onclick="document.getElementById('criteria').style.visibility='hidden'" name="series_type" value="time series" checked>סדרה עתית<br>
+    <input type="radio" onclick="document.getElementById('criteria').style.visibility='visible'" name="series_type" value="pie series">סדרת פאי<br>
     </td>
     </tr>
+    <tr id="criteria" style="visibility : hidden">
+    <td id="InsertData">הקריטריון<br>לפילוח הנתונים:</td><td><textarea name="criteria" rows="1"></textarea></td>
+    </tr>
     </table>     
+    <br>
     <div><input type="submit" value="הזן סדרה"></div>
 </form>
 </div>
