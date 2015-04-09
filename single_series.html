@@ -11,8 +11,7 @@
     google.load("visualization", "1.1", {packages:["annotationchart","corechart"]});
     google.setOnLoadCallback(drawChart);
     function drawChart() {
-    if ("{{series_type}}" == "time series")
-        {
+    {% if series_type == "time series" %}
         var data = new google.visualization.DataTable();
 	    data.addColumn('date','Date');
 	    data.addColumn('number','{{units}}');
@@ -21,34 +20,27 @@
 	        [new Date({{number['google_chart_year']}},{{number['google_chart_month']}},{{number['google_chart_day']}}), {{number['number']}}],
             {% endfor %} 
             ]);
-
-            var options = {
-            title: '{{series_description}}',displayAnnotations: true
-            };
-            var chart = new google.visualization.AnnotationChart(document.getElementById('chart_div'));
-            chart.draw(data, options);
-        }
-    else
-        {
-        if ("{{series_type}}" == "pie series")
-            {
-            var data = new google.visualization.DataTable();
-            data.addColumn('string','{{criteria}}');    
-            data.addColumn('number','{{units}}');    
-            data.addRows([
-	            {% for number in list_of_numbers %}
-                ['{{number['criteria_value']}}', {{number['number']}}],
-                {% endfor %} 
-                ]);
-            var options = {
-            title: 'Distribution by {{criteria}}'
-            };
-
-            var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
-            chart.draw(data, options);
-            }
-        }
-     }
+        var options = {
+        title: '{{series_description}}',displayAnnotations: true
+        };
+        var chart = new google.visualization.AnnotationChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+    {% elif series_type == "pie series" %}
+        var data = new google.visualization.DataTable();
+        data.addColumn('string','{{criteria}}');    
+        data.addColumn('number','{{units}}');    
+        data.addRows([
+            {% for number in list_of_numbers %}
+            ['{{number['criteria_value']}}', {{number['number']}}],
+            {% endfor %} 
+            ]);
+        var options = {
+        title: 'Distribution by {{criteria}}'
+        };
+        var chart = new google.visualization.PieChart(document.getElementById('chart_div'));
+        chart.draw(data, options);
+    {% endif %}
+    }
 </script>
 
 

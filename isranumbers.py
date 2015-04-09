@@ -508,7 +508,8 @@ def get_series_values_for_display(series_id):
         list_of_numbers=[]
         for number_id in number_ids_in_series:
             num_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(number_id))
-            list_of_numbers.append(add_date_for_google_chart(num_dictionary))
+            if series_type == "time series":
+                list_of_numbers.append(add_date_for_google_chart(num_dictionary))
             if series_type == "pie series":
                 list_of_numbers.append(add_criteria_for_google_chart(num_dictionary,criteria_name))
         if series_type == "time series":
