@@ -39,74 +39,39 @@ def validate(handler,permission):
             return
         handler.redirect('/registrationform')
 
-    
-class IsraNumber(db.Model):
-  """Models an individual IsraNumber entry with an author, number, 
-  units, and description."""
-  author = db.StringProperty()
-  insertion_time= db.DateTimeProperty(auto_now_add=True)
-  number = db.FloatProperty()
-  units = db.StringProperty()
-  labels = db.StringProperty(multiline = True)
-  description = db.StringProperty(multiline = True)
-  source = db.StringProperty()
-  year_of_number = db.IntegerProperty()
-  month_of_number =db.IntegerProperty()
-  day_of_number =db.IntegerProperty()
-  
-
-def isra_key():
-  return db.Key.from_path('IsraBook','IsraTable')
-
-
 class MainPage(webapp2.RequestHandler):
   def get(self):
-    #get the number of entries in the index
-    default_options = search.QueryOptions(limit=1)
-    empty_search_phrase_obj = search.Query(query_string="",options=default_options)
-    results_for_number_of_data_documents=search.Index(name=_INDEX_NAME).search(query=empty_search_phrase_obj)
-    number_found = results_for_number_of_data_documents.number_found
+    search_phrase=""
     if self.request.get('search_phrase'):
         search_phrase=self.request.get('search_phrase')
-    else:
-        search_phrase=""
-    #need to check if the scoredDocunemt istances are set to hebrew automatically
-    #and also if the different fields can be in different language
-    #expr_list = [search.SortExpression(expression='author', default_value='', direction=search.SortExpression.DESCENDING)]
-    sort_opts = search.SortOptions()
     cursor=search.Cursor()
     if self.request.get('cursor'):
         cursor=search.Cursor(web_safe_string=self.request.get('cursor'))
-    search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=sort_opts,
-                                                  returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type' , 'author'],
-                                                  #snippeted_fields=['description','source']
-                                                  )
+    search_phrase_options = search.QueryOptions(limit=10,cursor=cursor, sort_options=search.SortOptions(),
+                                              returned_fields=['number', 'units', 'year_of_number', 'month_of_number', 'day_of_number', 'series_type' , 'author'],
+                                              #snippeted_fields=['description','source']
+                                              )
 
     search_phrase_obj = search.Query(query_string=search_phrase, options=search_phrase_options)
     results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
     cursor_string,table_of_results = create_table_of_results(results) 
     data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
-    url,url_linktext,nickname=login_status(self.request.uri)
-    template_values = {
-        'url': url,
-        'url_linktext': url_linktext,
-        'nickname': nickname,
+    template_values=login_status(self.request.uri)
+    template_values.update({
         'search_phrase': search_phrase,
         'results': table_of_results,
-        'number_found' : number_found,
         'data_display_order' : data_display_order,
         'cursor_string' : cursor_string
-    }
+    })
 
     template = jinja_environment.get_template('index.html')
     self.response.out.write(template.render(template_values))
 
 def create_table_of_results(results):
     cursor=results.cursor
+    cursor_string=""
     if cursor:
         cursor_string=cursor.web_safe_string
-    else:
-        cursor_string=""
     table_of_results = [document_to_dictionary(result) for result in results]
     for result in table_of_results:
         result[u'display_date']=display_date_of_number(result)
@@ -120,7 +85,7 @@ def login_status(uri):
     user = users.get_current_user()
     nickname=""
     if user:
-        url = users.create_logout_url(uri)
+        url = users.create_logout_url("")
         url_linktext = 'Logout'
         q = UsersList.all()
         q.filter("email =" , user.email())
@@ -129,8 +94,7 @@ def login_status(uri):
     else:
         url = users.create_login_url(uri)
         url_linktext = 'Login' 
- 
-    return (url,url_linktext,nickname)
+    return {'url': url, 'url_linktext': url_linktext, 'nickname': nickname}
         
 def display_date_of_number(document_dictionary):
     display_date=""
@@ -142,44 +106,31 @@ def display_date_of_number(document_dictionary):
         display_date+="%d" % document_dictionary[u'year_of_number']
     return display_date
 
-#todo: create a class wuth validation option for the blobstore hanler like we did with the webapp2 request handler
 class UploadCsv(blobstore_handlers.BlobstoreUploadHandler):
   def get(self): 
-    validate(self,'editor')
-    url,url_linktext,nickname=login_status(self.request.uri)
-    template_values = {
-        'url': url,
-        'url_linktext': url_linktext,
-        'nickname': nickname,
-        'upload_url': blobstore.create_upload_url('/uploadnumbercsv')
-    }
-    template = jinja_environment.get_template('insert_csv_file.html')
-    self.response.out.write(template.render(template_values))
+    upload_get(self,'/uploadnumbercsv','insert_csv_file.html')
   def post(self):
-    validate(self,'editor')
-    file_info = self.get_uploads('csv_file')[0]
-    key_str = str(file_info.key())
-    taskqueue.add(url='/worker',params = {'key_str' : key_str})
-    self.redirect('/')
+    upload_post(self,'csv_file','/worker')
 
 class UploadSeriesXml(blobstore_handlers.BlobstoreUploadHandler):
-  def get(self): 
-    validate(self,'editor')
-    url,url_linktext,nickname=login_status(self.request.uri)
-    template_values = {
-        'url': url,
-        'url_linktext': url_linktext,
-        'nickname': nickname,
-        'upload_url': blobstore.create_upload_url('/uploadseriesxml')
-    }
-    template = jinja_environment.get_template('insert_xml_series_file.html')
-    self.response.out.write(template.render(template_values))
-  def post(self):
-    validate(self,'editor')
-    file_info = self.get_uploads('xml_file')[0]
+    def get(self): 
+        upload_get(self,'/uploadseriesxml','insert_xml_series_file.html')
+    def post(self):
+        upload_post(self,'xml_file','/workerseriesxml')
+
+def upload_get(handler,url,html):
+    validate(handler,'editor')
+    template_values=login_status(handler.request.uri)
+    template_values.update({'upload_url': blobstore.create_upload_url(url)})
+    template = jinja_environment.get_template(html)
+    handler.response.out.write(template.render(template_values))
+
+def upload_post(handler,file_type,destination_url):
+    validate(handler,'editor')
+    file_info = handler.get_uploads(file_type)[0]
     key_str = str(file_info.key())
-    taskqueue.add(url='/workerseriesxml',params = {'key_str' : key_str})
-    self.redirect('/')
+    taskqueue.add(url=destination_url,params = {'key_str' : key_str})
+    handler.redirect('/')
 
 class SeriesXmlWorker(webapp2.RequestHandler):
   def post(self):
@@ -201,89 +152,69 @@ class SeriesXmlWorker(webapp2.RequestHandler):
             search.TextField(name='labels', value=labels),
             search.TextField(name='series_type',value=series_type)]
 
-        if not check_duplicate_series(description):
-            series_id=search.Index(name=_INDEX_NAME).put(search.Document(
-                fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
-            for number in child:
-                value=float(number.attrib['value'])
-                year='-1'
-                month='-1'
-                day='-1'
+        if check_duplicate_series(description):
+            logging.info("duplicate series %s" % description)
+            return
+        series_id=search.Index(name=_INDEX_NAME).put(search.Document(
+            fields=data_fields + [search.TextField(name='list_of_number_ids', value='')]))[0].id
+        for number in child:
+            value=float(number.attrib['value'])
+            year='-1'
+            month='-1'
+            day='-1'
+            if 'time_period' in number.attrib:
                 time=number.attrib['time_period']
+                year=time
                 if time.find('-') != -1:
                     year = time.split('-')[0]
                     month = time.split('-')[1]
                     if len(time.split('-'))==3:
                         day = time.split('-')[2]
-                else:
-                    year=time
-                check_duplicate=check_duplicate_numbers(value,units,description,source,year,month,day)
-                if check_duplicate:
-                    number=check_duplicate
-                    number_id=number.doc_id
-                    add_series_id_to_number(number,series_id)
-                else:
-                    number_id=search.Index(name=_INDEX_NAME).put(search.Document(
-                        fields=[search.TextField(name='author', value=author),
-                        search.NumberField(name='number', value=value),
-                        search.TextField(name='units', value=units),
-                        search.TextField(name='description', value=description),
-                        search.TextField(name='labels', value=labels),
-                        search.TextField(name='source', value=source),
-                        search.NumberField(name='year_of_number', value=int(year)),
-                        search.NumberField(name='month_of_number', value=int(month)),
-                        search.NumberField(name='day_of_number', value=int(day)),
-                        search.TextField(name='contained_in_series', value=series_id)]))[0].id
-                list_of_number_ids+=u" " + number_id
-            search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
-                fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
+            check_duplicate=check_duplicate_numbers(value,units,description,source,year,month,day)
+            if check_duplicate:
+                number=check_duplicate
+                number_id=number.doc_id
+                add_series_id_to_number(number,series_id)
+            else:
+                number_id = add_to_number_index(author, None, value, units, description, labels,
+                                                source, int(year), int(month), int(day), series_id)     
+            list_of_number_ids+=u" " + number_id
+        search.Index(name=_INDEX_NAME).put(search.Document(doc_id=series_id ,
+            fields=data_fields + [search.TextField(name='list_of_number_ids', value=list_of_number_ids)]))
 
-        else:
-            logging.info("duplicate series %s" % description)
 
 class CsvWorker(webapp2.RequestHandler):
   def post(self):
-    logging.info("worker called")
     file_info = blobstore.BlobInfo(blobstore.BlobKey(self.request.get('key_str')))
     reader = blobstore.BlobReader(file_info)
     next(reader)
     csv_file_content= csv.reader(reader, delimiter=',', quotechar='"')   
-    
     for row in csv_file_content:      
         number = row[0]
         units = row[1]
         description = row[2]
+        labels=row[3]
         source = row[4]
         year = row[5]
         month = row[6]
         day = row[7]
-        if not check_duplicate_numbers(number,units,description,source,year,month,day):
-            add_to_number_index(get_author(),          
-                                None,
-                                float(number),
-                                units,
-                                description,
-                                row[3],
-                                source,
-                                int(year),
-                                int(month),
-                                int(day))
-        else:
-            logging.info("duplicate number %s %s %s %s %s %s %s" % (number,units,description,row[3],year,month,day))
-    logging.info("worker finished")
-
+        if check_duplicate_numbers(number,units,description,source,year,month,day):
+            logging.info("duplicate number %s %s %s" % (number,units,description))
+            return
+        add_to_number_index(get_author(), None, float(number), units, description, labels,
+                            source, int(year), int(month), int(day))
 
 class InsertNumber(webapp2.RequestHandler):
   def get(self): 
     validate(self,'editor')
+    template_values=login_status(self.request.uri)
     template = jinja_environment.get_template('insert_number.html')
-    self.response.out.write(template.render())
+    self.response.out.write(template.render(template_values))
   def post(self):
     validate(self,'editor')
     number_id = None
     if self.request.get('number_id'):
         number_id=self.request.get('number_id')
-        
     number = self.request.get('number')
     units = self.request.get('units')
     description = self.request.get('description')
@@ -291,25 +222,19 @@ class InsertNumber(webapp2.RequestHandler):
     year = self.request.get('year_of_number')
     month = self.request.get('month_of_number')
     day = self.request.get('day_of_number') 
-    if not check_duplicate_numbers(number,units,description,source,year,month,day):
-        logging.info('no duplicate')
-        add_to_number_index(get_author(),
-                            number_id,
-                            float(number),
-                            units,
-                            description,
-                            self.request.get('labels'),
-                            source,
-                            int(year),
-                            int(month),
-                            int(day))     
+    if check_duplicate_numbers(number,units,description,source,year,month,day):
+        logging.info('duplicate number')
+    else:
+        add_to_number_index(get_author(), number_id, float(number), units, description, self.request.get('labels'),
+                            source, int(year), int(month), int(day))     
     self.redirect('/')
     
 class DeleteManyNumbers(webapp2.RequestHandler):
   def get(self):
     validate(self,'editor')
+    template_values=login_status(self.request.uri)
     template = jinja_environment.get_template('delete_numbers.html')
-    self.response.out.write(template.render())
+    self.response.out.write(template.render(template_values))
   def post(self):
     validate(self,'editor')
     documents_to_delete = int(self.request.get('documents_to_delete'))
@@ -321,7 +246,6 @@ class DeleteManyNumbers(webapp2.RequestHandler):
         doc_index.delete(document_ids)
     self.redirect('/')
 
-
 class SingleNumber(webapp2.RequestHandler):
     def get(self):
         doc_id_to_display = self.request.get('single_number')
@@ -331,78 +255,59 @@ class SingleNumber(webapp2.RequestHandler):
         separate_series = dictionary_of_number_to_display[u'contained_in_series'].split()
         list_of_series_description=[]
         for series_id in separate_series :
-            series = search.Index(_INDEX_NAME).get(series_id)
-            for field in series.fields:
-                if field.name == u'description':
-                    list_of_series_description.append((series_id, field.value))
-        #target
-        self.display_number(dictionary_of_number_to_display,list_of_series_description)
-
-    def display_number(self,dictionary_of_number_to_display,list_of_series_description):
+            series_dictionary = document_to_dictionary(search.Index(_INDEX_NAME).get(series_id))
+            list_of_series_description.append((series_id, series_dictionary[u'description']))
         data_display_order_english=[u'description',u'number',u'units',u'display_date',u'source',u'author', u'labels' , u'contained_in_series']
         hebrew_titles=[u'תיאור הנתון', u'המספר' , u'יחידות המדידה' , u'תאריך' , u'המקור' , u'המזין' , u'תגיות' , u'מופיע בסדרות']
         data_display_order = zip(data_display_order_english,hebrew_titles)
-#dealing with hebrew
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'dictionary_of_number_to_display' : dictionary_of_number_to_display , 
             'data_display_order' : data_display_order , 
             'list_of_series_description' : list_of_series_description
-            }
+            })
         template = jinja_environment.get_template('single_number.html')
         self.response.out.write(template.render(template_values))
 # ToDo: make list of series show abbrev series description and make sure it works when one number belongs to multiple series
 
-
 def get_author():
-  author = "None"
   if users.get_current_user():
-    author = users.get_current_user().nickname().split('@')[0]
-  return author  
+    return users.get_current_user().nickname().split('@')[0]
+  return None
 
-
-def add_to_number_index(author,number_id,number,units,description,labels,source,year,month,day):
-  x = search.Index(name=_INDEX_NAME).put(search.Document(
-    doc_id=number_id,
-    fields=[search.TextField(name='author', value=author),
-              search.NumberField(name='number', value=number),
-              search.TextField(name='units', value=units),
-              search.TextField(name='description', value=description),
-              search.TextField(name='labels', value=labels),
-              search.TextField(name='source', value=source),
-              search.NumberField(name='year_of_number', value=year),
-              search.NumberField(name='month_of_number', value=month),
-              search.NumberField(name='day_of_number', value=day),
-	      search.TextField(name='contained_in_series', value='')]))
-  logging.info(dir(x[0]))
-  logging.info(x)
+def add_to_number_index(author,number_id,number,units,description,labels,source,year,month,day,contained_in_series=""):
+    return search.Index(name=_INDEX_NAME).put(search.Document(
+                        doc_id=number_id,
+                        fields=[search.TextField(name='author', value=author),
+                              search.NumberField(name='number', value=number),
+                              search.TextField(name='units', value=units),
+                              search.TextField(name='description', value=description),
+                              search.TextField(name='labels', value=labels),
+                              search.TextField(name='source', value=source),
+                              search.NumberField(name='year_of_number', value=year),
+                              search.NumberField(name='month_of_number', value=month),
+                              search.NumberField(name='day_of_number', value=day),
+                              search.TextField(name='contained_in_series', value=contained_in_series)]))[0].id
     
 class InsertSeries(webapp2.RequestHandler):
   def get(self): 
     validate(self,'editor')
+    template_values=login_status(self.request.uri)
     template = jinja_environment.get_template('insert_series.html')
-    self.response.out.write(template.render())
+    self.response.out.write(template.render(template_values))
   def post(self):
     validate(self,'editor')
     series_type = self.request.get('series_type')
-    logging.info("ffff")
-    logging.info(series_type)
+    labels = self.request.get('labels')
     if series_type == "pie series":
-        logging.info("good")
-        labels = "%s criteria:%s" % (self.request.get('labels'),self.request.get('criteria'))
-        logging.info(labels)
-    else:
-        labels = self.request.get('labels')
-
+        labels += " criteria:" + self.request.get('criteria')
     series_id = add_to_series_index(get_author(),
                                     self.request.get('description'),
                                     self.request.get('units'),
                                     labels,
-			                        self.request.get('series_type'))
+			                        series_type)
     self.redirect('/addnumbertoseries?series_id=%s' %series_id)
+##### refactoring stopped here 10.4.2015
 
 class ChooseSeriesToEdit(webapp2.RequestHandler):
     def get(self):
@@ -421,16 +326,13 @@ class ChooseSeriesToEdit(webapp2.RequestHandler):
         results = search.Index(name=_INDEX_NAME).search(query=search_phrase_obj)
         cursor_string,table_of_results = create_table_of_results(results) 
         data_display_order=[u'series_type',u'description',u'source']
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'search_phrase': search_phrase,
             'results': table_of_results,
             'data_display_order' : data_display_order,
             'cursor_string' : cursor_string
-        }
+        })
         template = jinja_environment.get_template('choose_series.html')
         self.response.out.write(template.render(template_values))
     
@@ -470,11 +372,8 @@ class AddNumberToSeries(webapp2.RequestHandler):
 
 
         data_display_order=[u'number',u'units',u'description',u'display_date',u'source',u'author']
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'series_id' : series_id , 
             'description' : description ,
             'labels' : labels , 
@@ -485,7 +384,7 @@ class AddNumberToSeries(webapp2.RequestHandler):
             'cursor_string' : cursor_string,
             'criteria_name' : criteria_name,
             'list_of_numbers' : list_of_numbers,
-            }
+            })
         template = jinja_environment.get_template('add_number_to_series.html')
         self.response.out.write(template.render(template_values))
 
@@ -584,11 +483,8 @@ class DisplaySeries(webapp2.RequestHandler):
         data_display_order_english=[u'description',u'units',u'series_type',u'labels',u'source',u'author']
         hebrew_titles=[u'תיאור הסדרה' , u'יחידות' , u'סוג הסדרה' , u'תגיות' , u'המקור' , u'המזין']
         data_display_order = zip(data_display_order_english,hebrew_titles)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'series_to_display_dictionary' : series_to_display_dictionary,
             'data_display_order' : data_display_order,
             'list_of_numbers' : list_of_numbers,
@@ -597,7 +493,7 @@ class DisplaySeries(webapp2.RequestHandler):
             'units' : units,
             'series_type' : series_type,
             'series_id_to_display' : series_id,
-            'criteria' : criteria_name}
+            'criteria' : criteria_name})
         #deside wether to pass to jinja all the series dictionary or just the relevant data
         template = jinja_environment.get_template('single_series.html')
         self.response.out.write(template.render(template_values))
@@ -703,39 +599,28 @@ class UsersList(db.Model):
 
 class AuthenticationManagement(webapp2.RequestHandler):
     def get(self):
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
-            }
+        template_values=login_status(self.request.uri)
         template = jinja_environment.get_template('authentication.html')
         self.response.out.write(template.render(template_values))
 
 class AdminManagementPage(webapp2.RequestHandler):
     def get(self):
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'register_url' : '/authenticationmanagement/admin/registeruser',
             'unregister_url' : '/authenticationmanagement/admin/unregisteruser',
-            'display_url' : '/authenticationmanagement/admin/displayuserslist'}
+            'display_url' : '/authenticationmanagement/admin/displayuserslist'})
         template = jinja_environment.get_template('authentication_management.html')
         self.response.out.write(template.render(template_values))
 
 class EditorsManagementPage(webapp2.RequestHandler):
     def get(self):
         validate(self,'editor')
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'register_url' : '/authenticationmanagement/editors/registeruser',
             'unregister_url' : '/authenticationmanagement/editors/unregisteruser',
-            'display_url' : '/authenticationmanagement/editors/displayuserslist'}
+            'display_url' : '/authenticationmanagement/editors/displayuserslist'})
         template = jinja_environment.get_template('authentication_management.html')
         self.response.out.write(template.render(template_values))
 
@@ -747,13 +632,10 @@ class AdminRegisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'users' : users ,
-            'register_url' : '/authenticationmanagement/admin/registeruser'}
+            'register_url' : '/authenticationmanagement/admin/registeruser'})
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -773,13 +655,10 @@ class AdminUnregisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'users' : users ,
-            'unregister_url' : '/authenticationmanagement/admin/unregisteruser'}
+            'unregister_url' : '/authenticationmanagement/admin/unregisteruser'})
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -796,12 +675,9 @@ class AdminDisplayUsersList(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
-            'users' : users}
+        template_values=login_status(self.request.uri)
+        template_values.update({
+            'users' : users})
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
 
@@ -812,13 +688,10 @@ class EditorsRegisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'users' : users ,
-            'register_url' : '/authenticationmanagement/editors/registeruser'}
+            'register_url' : '/authenticationmanagement/editors/registeruser'})
         template = jinja_environment.get_template('register_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -840,13 +713,10 @@ class EditorsUnregisterUser(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values=login_status(self.request.uri)
+        template_values.update({
             'users' : users ,
-            'unregister_url' : '/authenticationmanagement/editors/unregisteruser'}
+            'unregister_url' : '/authenticationmanagement/editors/unregisteruser'})
         template = jinja_environment.get_template('unregister_user.html')
         self.response.out.write(template.render(template_values))
     def post(self):
@@ -864,12 +734,9 @@ class EditorsDisplayUsersList(webapp2.RequestHandler):
         users = []
         for user in q.run():
             users.append(user)
-        url,url_linktext,nickname=login_status(self.request.uri)
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
-            'users' : users}
+        template_values=login_status(self.request.uri)
+        template_values.update({
+            'users' : users})
         template = jinja_environment.get_template('display_users_list.html')
         self.response.out.write(template.render(template_values))
 
@@ -890,16 +757,13 @@ class EditNumber(webapp2.RequestHandler):
         number_id=self.request.get('number_id')
         number = search.Index(name=_INDEX_NAME).get(number_id)
         number_dictionary=document_to_dictionary(number)
-        url,url_linktext,nickname=login_status(self.request.uri)
+        template_values=login_status(self.request.uri)
         date_of_number_as_string = {u'year' : date_to_string(number_dictionary[u'year_of_number']),
                                     u'month' : date_to_string(number_dictionary[u'month_of_number']),
                                     u'day' : date_to_string(number_dictionary[u'day_of_number'])}
-        template_values = {
-            'url': url,
-            'url_linktext': url_linktext,
-            'nickname': nickname,
+        template_values.update({
             'date_of_number_as_string' : date_of_number_as_string,
-            'number_dictionary' : number_dictionary}
+            'number_dictionary' : number_dictionary})
         template = jinja_environment.get_template('edit_number.html')
         self.response.out.write(template.render(template_values))
 
@@ -973,8 +837,9 @@ class DeleteDocumentBruteForce(webapp2.RequestHandler):
         
 class About(webapp2.RequestHandler):
     def get(self):
+        template_values=login_status(self.request.uri)
         template = jinja_environment.get_template('about.html')
-        self.response.out.write(template.render())
+        self.response.out.write(template.render(template_values))
 
 # we delete duplicate data if the fields: number , units , description , source , year , month and day are identical to existing number
 # (i.e. - if only the labels or the author are different we see that as duplicate data and delete it)
